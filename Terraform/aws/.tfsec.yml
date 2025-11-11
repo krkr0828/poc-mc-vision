@@ -1,6 +1,0 @@
-# tfsec configuration for PoC environment
-# Production environments should address these security concerns
-
-exclude:
-  # S3 encryption with customer managed key is not required for PoC
-  - aws-s3-encryption-customer-key
