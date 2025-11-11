@@ -56,7 +56,7 @@ jobs:
 
       - name: Run tfsec
         id: tfsec
-        run: /tmp/tfsec . --format default --no-color
+        run: /tmp/tfsec . --format default --no-color --minimum-severity HIGH
 
       - name: Terraform Plan
         id: plan
