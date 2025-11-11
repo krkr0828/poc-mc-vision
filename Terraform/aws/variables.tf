@@ -157,4 +157,3 @@ variable "log_retention_days" {
     error_message = "Invalid retention period. Must be a valid CloudWatch Logs retention value."
   }
 }
-# CI/CD test

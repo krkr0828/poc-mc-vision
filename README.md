@@ -4,6 +4,7 @@
 
 > - **AWS × Azure 両対応のAI基盤をTerraformにて10分で構築し、動作確認完了**
 > - **SageMaker Serverless・Bedrock・Azure OpenAI の3つのAIサービスを統合**
+> - **GitHub ActionsによるCI/CDパイプライン実装で、PRレビュー自動化・手動承認デプロイを実現**
 > - **個人で構築し、マルチクラウドAI基盤の実装フローを確認**
 ---
 
@@ -11,7 +12,8 @@
 
 本プロジェクトは、**AWS と Azure を統合したマルチクラウド AI 基盤の構築プロジェクト**です。
 SageMaker Serverless・Bedrock・Azure OpenAI の3つのAIサービスをTerraformで構築し、
-実際に動作させ、**マルチクラウドAI基盤の構築から動作検証までの一連のプロセスを通して、実装・再現**を行いました。
+実際に動作させ、**マルチクラウドAI基盤の構築から動作検証までの一連のプロセスを通して、構築・検証**を行いました。
+さらに、**GitHub ActionsによるCI/CDパイプラインを実装し、インフラ変更の自動検証と安全なデプロイフローを確立**しました。
 
 ---
 
@@ -22,7 +24,7 @@ SageMaker Serverless・Bedrock・Azure OpenAI の3つのAIサービスをTerrafo
 | 項目 | 内容 |
 |------|------|
 | **キャリア目標** | 2026年4月以降、AWS（理想は AWS × Azure） のクラウドAI基盤構築案件への参画 |
-| **検証目的** | AWS（SageMaker・Bedrock）とAzure（OpenAI）の実際の構築手順を把握し、実装を通じて理解を深める |
+| **検証目的** | AWS（SageMaker・Bedrock）とAzure（OpenAI）の実際の構築手順を把握し、実装を通じて理解を深める<br>TerraformによるIaC管理とGitHub ActionsによるCI/CD実装を通じて、インフラ自動化の理解を深める |
 | **検証テーマ** | 複数クラウドのAIサービスを統合した推論基盤を個人で構築できるか |
 
 ---
@@ -35,6 +37,7 @@ SageMaker Serverless・Bedrock・Azure OpenAI の3つのAIサービスをTerrafo
 |---|---------|---------|
 | **1** | FastAPI → SageMaker/Bedrock/Azure OpenAI の3つのAIサービスが正常動作 | ✅ 達成 |
 | **2** | 推論結果をDynamoDBに保存し、S3イベント連動のLambda起動を確認 | ✅ 達成 |
+| **3** | TerraformによるAWS/Azureリソース構築とGitHub Actions CI/CDパイプラインが正常動作 | ✅ 達成 |
 
 ---
 
@@ -47,14 +50,15 @@ SageMaker Serverless・Bedrock・Azure OpenAI の3つのAIサービスをTerrafo
 | **マルチクラウド統合** | AWS（SageMaker・Bedrock）とAzure（OpenAI）の3つのAIサービスを統合し、正常動作を確認 |
 | **Terraformによるコード化** | インフラをコード化し、再デプロイ可能な状態を確認 |
 | **イベント駆動アーキテクチャ** | S3イベント→Lambda自動起動の仕組みを実装し、動作確認完了 |
+| **CI/CD自動化** | GitHub ActionsによるTerraform検証・セキュリティスキャン・手動承認デプロイの一連のフローを構築し、動作確認完了 |
 
 ### **今後の展開（今後の拡張構想）**
 
 本PoCでマルチクラウドAI基盤の構築手順を確認できたため、今後は以下の拡張を検討しています:
 
-- **CI/CD統合**: GitHub Actionsによる自動デプロイ化
 - **監視強化**: CloudWatch Alarmsによるエラー率・レイテンシ監視
 - **スケーラビリティ向上**: Step Functionsを活用したマルチモデル推論パイプライン化
+- **セキュリティ強化**: VPCエンドポイント（S3/SageMaker/Bedrock）の導入によるプライベート接続化、ネットワークレベルでの通信の隔離
 
 ---
 
@@ -72,8 +76,8 @@ Terraformで作成したAzure OpenAIリソースは**リージョナルエンド
 ### **4. Azure Resource Provider登録**
 Azure初回デプロイ時、Resource Providerが未登録のため接続タイムアウトエラーが発生。`az provider register` コマンドで事前登録が必要であることを学びました。
 
-### **5. S3バケット削除時のバージョニング対応**
-`terraform destroy` 実行時、バージョニング有効なS3バケットが削除できず失敗。すべてのオブジェクトバージョンと削除マーカーを事前削除する必要があることを理解しました。
+### **5. GitHub Actions CI/CD実装時の調整**
+CI/CDパイプライン実装時、tfsecセキュリティスキャンで中・低レベルの脆弱性が大量に検出され、ワークフローがブロックされる問題が発生しました。`--minimum-severity HIGH` オプションを追加し、高レベルの脆弱性のみを必須チェック対象とすることで解決しました。
 
 ---
 
@@ -83,7 +87,7 @@ Azure初回デプロイ時、Resource Providerが未登録のため接続タイ�
 
 | 項目 | 内容 |
 |------|------|
-| **実施期間** | 2025年9月〜10月（約2ヶ月） |
+| **実施期間** | 2025年10月〜11月（約2ヶ月） |
 | **実行環境** | AWS（東京リージョン: ap-northeast-1）＋ Azure（米国東部2: East US 2） |
 | **Terraform** | 1.9.8 |
 | **Python** | 3.12 |
@@ -106,8 +110,9 @@ Azure初回デプロイ時、Resource Providerが未登録のため接続タイ�
 | **マルチクラウド連携** | SageMaker Serverless／Bedrock／Azure OpenAI を単一 API で抽象化 | 複数クラウドを切り替える推論ルーティングの実装 |
 | **運用自動化** | S3 → Lambda（イベントログ）／FastAPI → 推論 → DynamoDB | イベント駆動による運用自動化アーキテクチャの構築 |
 | **IaC 再現性** | AWS／Azure リソースを Terraform モジュール化（10分で再デプロイ） | IaCで環境再現と変更管理を実装 |
+| **CI/CD パイプライン** | GitHub ActionsによるTerraform自動検証・手動承認デプロイ | PRレビュー自動化とセキュアなデプロイフローの実装 |
 | **コスト最適化** | Serverless + S3 ライフサイクル（30日）+ DynamoDB TTL（1日）による低コスト運用を検証 | TTLとライフサイクルを活用した低コスト運用パターンの実装 |
-| **セキュリティ & 可観測性** | S3暗号化（AES256）・バージョニング・CloudWatch Logs構造化ログ・IAM最小権限（Lambda/SageMaker） | 暗号化と構造化ログに加え、TerraformでIAMロールを最小権限に整備 |
+| **セキュリティ & 可観測性** | S3暗号化（AES256）・バージョニング・CloudWatch Logs構造化ログ・IAM最小権限（Lambda/SageMaker）・tfsecスキャン | 暗号化と構造化ログに加え、TerraformでIAMロールを最小権限に整備し、セキュリティスキャンを自動化 |
 
 ---
 
@@ -197,6 +202,52 @@ AWS・Azure の認証情報は環境変数で管理。
 
 ---
 
+## 🔄 Terraform CI/CD パイプライン（GitHub Actions）
+
+本PoCでは、**GitHub Actions を活用したTerraform CI/CDパイプライン**を実装し、インフラ変更の品質担保と安全なデプロイを実現しています。
+
+### **実装内容**
+
+| 機能 | 実装内容 | 効果 |
+|------|---------|------|
+| **自動検証** | PR作成時にterraform plan・フォーマット・セキュリティスキャン（tfsec）を自動実行 | コードレビュー前に問題を検出し、品質を担保 |
+| **手動承認デプロイ** | mainマージ後、手動承認を経てterraform applyを実行 | 誤デプロイを防止し、安全な本番反映を実現 |
+| **PRコメント自動投稿** | Plan結果をPRに自動コメント投稿 | レビュアーが変更内容を即座に把握可能 |
+| **セキュリティチェック** | tfsecによるセキュリティスキャン（HIGH以上）を必須化 | 脆弱性を早期発見し、セキュアな構成を維持 |
+| **失敗時Issue自動作成** | Apply失敗時に自動的にGitHub Issueを作成 | 問題の追跡と対応を効率化 |
+
+### **ワークフローの流れ**
+
+```
+1️⃣ PR作成
+   ├─ Terraform Format Check ✅
+   ├─ Terraform Init ✅
+   ├─ Terraform Validate ✅
+   ├─ tfsec Security Scan ✅
+   └─ Terraform Plan → PRにコメント投稿 📝
+
+2️⃣ コードレビュー
+   └─ Plan結果を確認してレビュー
+
+3️⃣ mainブランチへマージ
+   ├─ ワークフロー自動起動
+   └─ 手動承認待ち 🟡
+
+4️⃣ 手動承認
+   └─ Review deployments ボタンで承認
+
+5️⃣ Terraform Apply実行
+   └─ AWSリソース更新 🚀
+```
+
+### **詳細ガイド**
+
+CI/CDのセットアップ手順の詳細については、以下のドキュメントを参照してください：
+
+ **[Terraform/TERRAFORM_CICD_COMPLETE_GUIDE.md](./Terraform/TERRAFORM_CICD_COMPLETE_GUIDE.md)**
+
+---
+
 ## 🔍 技術選定理由
 
 本PoCは、特定の技術に依存せず**複数クラウドのAI基盤構成を実装を通じて理解を深める**ために選定しました:
@@ -213,6 +264,10 @@ AWS・Azure の認証情報は環境変数で管理。
 ### **サーバーレスアーキテクチャの選定**
 - **理由**: PoC段階でのコスト最小化（アイドル時コストゼロ）を優先
 - **学び**: コスト削減と引き換えにコールドスタート遅延が発生することを確認
+
+### **GitHub Actions CI/CD の選定**
+- **理由**: GitHubリポジトリとの統合が容易で、無料枠内でTerraform検証・セキュリティスキャン・自動デプロイを実装可能
+- **学び**: PRレビュー自動化（terraform plan結果の自動コメント投稿）と手動承認ゲート（Environment機能）により、安全なインフラ変更フローを確立できることを確認
 
 ---
 
@@ -236,6 +291,10 @@ poc-mc-vision/
 ├── Lambda/             # Lambda 関数コード
 │   ├── lambda_function.py
 │   └── poc-mc-vision-handler.zip  # デプロイ用バンドル（Terraform用）
+├── .github/
+│   └── workflows/      # GitHub Actions CI/CD
+│       ├── terraform-plan.yml   # PR時の自動検証
+│       └── terraform-apply.yml  # mainマージ後の手動承認デプロイ
 ├── Terraform/
 │   ├── aws/            # AWS リソース（モジュール分割）
 │   │   ├── backend.tf
@@ -257,11 +316,11 @@ poc-mc-vision/
 │   │   ├── README.md
 │   │   └── create-state-backend.sh
 │   ├── README.md
-│   └── DEPLOYMENT_CHECKLIST.md
+│   ├── DEPLOYMENT_CHECKLIST.md
+│   └── TERRAFORM_CICD_COMPLETE_GUIDE.md  # CI/CD完全ガイド
 ├── sagemaker_model/    # SageMaker カスタムモデル（TorchScript）
 │   └── model_torchscript.tar.gz
-├── configs/            # `.env` 実ファイルとテンプレート
-│   ├── .env
+├── configs/            # `.env` ファイルのテンプレート
 │   └── .env.example
 ├── results/            # 推論結果・ログ
 │   ├── images/
@@ -280,7 +339,7 @@ poc-mc-vision/
 
 ```bash
 # 必須ツール
-✅ Terraform >= 1.6.0
+✅ Terraform 1.9.8
 ✅ AWS CLI（aws sso login または aws configure）
 ✅ Azure CLI（az login）
 ✅ Node.js >= 18.x
@@ -352,7 +411,8 @@ npm run dev
 - ✅ **マルチクラウド設計**: AWS（SageMaker / Bedrock）と Azure（OpenAI）を統合した推論基盤を構築
 - ✅ **サーバーレスアーキテクチャ**: Lambda + Serverless 推論 + DynamoDB でアイドルコストゼロを実現
 - ✅ **IaC による再現性**: AWS/Azure を単一コードベースで管理し、10分で再構築可能
-- ✅ **セキュリティ & 運用**: S3暗号化・バージョニング・構造化ログによる運用ベースラインの実装
+- ✅ **CI/CD パイプライン**: GitHub Actionsによる自動検証・手動承認デプロイを実装し、安全なインフラ変更フローを確立
+- ✅ **セキュリティ & 運用**: S3暗号化・バージョニング・構造化ログ・tfsecスキャンによる多層防御を実装
 - ✅ **コスト最適化**: S3ライフサイクル（30日）／DynamoDB TTL（1日）による低コスト運用を確認
 
 ---
@@ -368,6 +428,9 @@ AWS と Azure の認証情報を環境変数で管理し、FastAPIから複数�
 ### **Terraformによるインフラコード化の実践**
 手動構築ではなくIaCで管理することで、設定の再現性が向上することを確認しました。
 
+### **TerraformによるCI/CD自動化の実装手順を確認**
+GitHub ActionsでPRごとに `fmt` / `validate` / `tfsec` / `plan` を自動実行し、mainマージ後は承認付きで `apply` する流れを構築。CI/CDフローを確認しました。
+
 ### **今後の目標**
 本PoCでAI基盤の基本的な構築手順は再現できたため、今後は実務案件でCI/CDや監視設計まで含めた実務的スキル習得を目指しています。
 
@@ -381,6 +444,6 @@ AWS と Azure の認証情報を環境変数で管理し、FastAPIから複数�
 | **[docs/PoC動作画面録画.mp4](./docs/PoC動作画面録画.mp4)** | 実際の動作デモ録画 |
 | **[Terraform/README.md](./Terraform/README.md)** | Terraformデプロイ詳細手順・トラブルシューティング |
 | **[Terraform/DEPLOYMENT_CHECKLIST.md](./Terraform/DEPLOYMENT_CHECKLIST.md)** | デプロイチェックリスト |
+| **[Terraform/TERRAFORM_CICD_COMPLETE_GUIDE.md](./Terraform/TERRAFORM_CICD_COMPLETE_GUIDE.md)** | CI/CDセットアップ完全ガイド |
 
 ---
-
