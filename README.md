@@ -240,7 +240,7 @@ AWS・Azure の認証情報は環境変数で管理。
 
 ### **詳細ガイド**
 
-CI/CDのセットアップ手順の詳細については、以下のドキュメントを参照してください：
+CI/CDのセットアップ手順の詳細については、以下のドキュメントを参照してください:
 
  **[Terraform/TERRAFORM_CICD_COMPLETE_GUIDE.md](./Terraform/TERRAFORM_CICD_COMPLETE_GUIDE.md)**
 
