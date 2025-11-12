@@ -2,18 +2,16 @@
 
 ## 💡 本PoCで実証したポイント（一枚要約）
 
-> - **AWS × Azure 両対応のAI基盤をTerraformにて10分で構築し、動作確認完了**
-> - **SageMaker Serverless・Bedrock・Azure OpenAI の3つのAIサービスを統合**
-> - **GitHub ActionsによるCI/CDパイプライン実装で、PRレビュー自動化・手動承認デプロイを実現**
-> - **個人で構築し、マルチクラウドAI基盤の実装フローを確認**
+> - **AWS × Azure 両対応のAI基盤をTerraformで構築し、正常動作を確認**
+> - **SageMaker Serverless・Bedrock・Azure OpenAI を連携し、推論結果の統合処理を実装**
+> - **GitHub ActionsによるCI/CD導入で、PRレビュー自動化と承認付きデプロイを実現**
 ---
 
 ## エグゼクティブサマリー
 
 本プロジェクトは、**AWS と Azure を統合したマルチクラウド AI 基盤の構築プロジェクト**です。
-SageMaker Serverless・Bedrock・Azure OpenAI の3つのAIサービスをTerraformで構築し、
-実際に動作させ、**マルチクラウドAI基盤の構築から動作検証までの一連のプロセスを通して、構築・検証**を行いました。
-さらに、**GitHub ActionsによるCI/CDパイプラインを実装し、インフラ変更の自動検証と安全なデプロイフローを確立**しました。
+SageMaker Serverless・Bedrock・Azure OpenAI の3サービスをTerraformで構築し、**マルチクラウドAI基盤として正常動作を確認。**
+さらに、**GitHub ActionsでTerraformの自動検証と承認付きデプロイを実現し、安全なインフラ更新フローを確立。**
 
 ---
 
@@ -24,8 +22,8 @@ SageMaker Serverless・Bedrock・Azure OpenAI の3つのAIサービスをTerrafo
 | 項目 | 内容 |
 |------|------|
 | **キャリア目標** | 2026年4月以降、AWS（理想は AWS × Azure） のクラウドAI基盤構築案件への参画 |
-| **検証目的** | AWS（SageMaker・Bedrock）とAzure（OpenAI）の実際の構築手順を把握し、実装を通じて理解を深める<br>TerraformによるIaC管理とGitHub ActionsによるCI/CD実装を通じて、インフラ自動化の理解を深める |
-| **検証テーマ** | 複数クラウドのAIサービスを統合した推論基盤を個人で構築できるか |
+| **検証目的** | AWS（SageMaker・Bedrock）とAzure（OpenAI）を統合した推論基盤を構築し、動作を検証<br>TerraformによるIaC管理とGitHub ActionsによるCI/CDパイプラインを実装し、安全なデプロイフローを確立 |
+| **検証テーマ** | 複数クラウドのAI推論基盤を個人で構築・再現できるかを検証 |
 
 ---
 
@@ -35,7 +33,7 @@ SageMaker Serverless・Bedrock・Azure OpenAI の3つのAIサービスをTerrafo
 
 | # | 成功条件 | 達成状況 |
 |---|---------|---------|
-| **1** | FastAPI → SageMaker/Bedrock/Azure OpenAI の3つのAIサービスが正常動作 | ✅ 達成 |
+| **1** | FastAPI経由でSageMaker・Bedrock・Azure OpenAIが正常応答 | ✅ 達成 |
 | **2** | 推論結果をDynamoDBに保存し、S3イベント連動のLambda起動を確認 | ✅ 達成 |
 | **3** | TerraformによるAWS/Azureリソース構築とGitHub Actions CI/CDパイプラインが正常動作 | ✅ 達成 |
 
@@ -47,14 +45,14 @@ SageMaker Serverless・Bedrock・Azure OpenAI の3つのAIサービスをTerrafo
 
 | 観点 | 検証結果 |
 |------|---------|
-| **マルチクラウド統合** | AWS（SageMaker・Bedrock）とAzure（OpenAI）の3つのAIサービスを統合し、正常動作を確認 |
+| **マルチクラウド統合** | AWS（SageMaker・Bedrock）とAzure（OpenAI）を統合し、推論リクエストの正常応答を確認 |
 | **Terraformによるコード化** | インフラをコード化し、再デプロイ可能な状態を確認 |
 | **イベント駆動アーキテクチャ** | S3イベント→Lambda自動起動の仕組みを実装し、動作確認完了 |
 | **CI/CD自動化** | GitHub ActionsによるTerraform検証・セキュリティスキャン・手動承認デプロイの一連のフローを構築し、動作確認完了 |
 
 ### **今後の展開（今後の拡張構想）**
 
-本PoCでマルチクラウドAI基盤の構築手順を確認できたため、今後は以下の拡張を検討しています:
+構築手順を確立できたため、次フェーズでは以下の拡張を予定:
 
 - **監視強化**: CloudWatch Alarmsによるエラー率・レイテンシ監視
 - **スケーラビリティ向上**: Step Functionsを活用したマルチモデル推論パイプライン化
@@ -65,7 +63,7 @@ SageMaker Serverless・Bedrock・Azure OpenAI の3つのAIサービスをTerrafo
 ## ⚠️ 実装時の課題と対処
 
 ### **1. SageMaker Serverlessの設定**
-SageMaker Serverlessでカスタムモデル（model.tar.gz）を読み込む際に、エンドポイント設定やモデルの配置で試行錯誤が必要でした。特にTorchScriptのモデルをJSON入力で受け取る設定に苦労しました。
+SageMaker Serverlessでカスタムモデル（model.tar.gz）を読み込む際に、エンドポイント設定やモデルの配置で試行錯誤が必要でした。特にTorchScriptモデルをJSON入力で扱う際の設定に試行錯誤。
 
 ### **2. Azure OpenAIエンドポイント形式**
 Terraformで作成したAzure OpenAIリソースは**リージョナルエンドポイント形式**（`https://eastus2.api.cognitive.microsoft.com`）でしたが、カスタムサブドメイン形式（`https://<resource-name>.openai.azure.com`）と誤認してDNSエラーが発生しました。実際の検証を通じて正しい形式を理解できました。
@@ -98,14 +96,14 @@ CI/CDパイプライン実装時、tfsecセキュリティスキャンで中・�
 ## プロジェクトの位置づけと訴求ポイント
 
 - **目的**: 2026年4月以降に AI 基盤エンジニアとして AWS案件へ参画するための実績づくり
-- **強み**: AIモデル開発そのものではなく、**マルチクラウドで推論を安全・効率的に運用する基盤構築力**
+- **強み**: モデル開発ではなく、**マルチクラウドでAI推論を安定・安全に運用する基盤構築力**
 - **想定読者**: 技術面接官・書類選考担当者・営業担当者
 
 ---
 
 ## この PoC で提供できる価値
 
-| 観点 | 実装内容 | 得られた知見・設計上の学び |
+| 観点 | 実装内容 | 実務への応用知見 |
 |------|----------|------------------|
 | **マルチクラウド連携** | SageMaker Serverless／Bedrock／Azure OpenAI を単一 API で抽象化 | 複数クラウドを切り替える推論ルーティングの実装 |
 | **運用自動化** | S3 → Lambda（イベントログ）／FastAPI → 推論 → DynamoDB | イベント駆動による運用自動化アーキテクチャの構築 |
@@ -250,16 +248,14 @@ CI/CDのセットアップ手順の詳細については、以下のドキュメ
 
 ## 🔍 技術選定理由
 
-本PoCは、特定の技術に依存せず**複数クラウドのAI基盤構成を実装を通じて理解を深める**ために選定しました:
-
 ### **マルチクラウド AI サービスの選定**
-- **AWS（SageMaker Serverless / Bedrock）**: カスタムモデルとマネージドモデルの両方を実際に触っての構築方法の把握
-- **Azure（OpenAI GPT-4o-mini）**: マルチクラウド連携の実装難易度感の確認
+- **AWS（SageMaker Serverless / Bedrock）**: カスタムモデルとマネージドモデルの両方を実装・検証
+- **Azure（OpenAI GPT-4o-mini）**: マルチクラウド連携の実装難易度を確認
 - **目的**: 単一クラウドではなく、複数クラウドを跨いだ推論基盤の動作検証を実施
 
 ### **Terraform の選定**
 - **理由**: AWS + Azure を単一コードベースで管理できる点で採用
-- **学び**: Terraformテンプレートの作成方法（リソース定義・モジュール化）や実行方法（init・plan・apply）の基本的なモジュール構成と実行手順を理解
+- **学び**: Terraformによるリソース定義・モジュール化、State管理（S3/DynamoDB）の実装
 
 ### **サーバーレスアーキテクチャの選定**
 - **理由**: PoC段階でのコスト最小化（アイドル時コストゼロ）を優先
@@ -267,7 +263,7 @@ CI/CDのセットアップ手順の詳細については、以下のドキュメ
 
 ### **GitHub Actions CI/CD の選定**
 - **理由**: GitHubリポジトリとの統合が容易で、無料枠内でTerraform検証・セキュリティスキャン・自動デプロイを実装可能
-- **学び**: PRレビュー自動化（terraform plan結果の自動コメント投稿）と手動承認ゲート（Environment機能）により、安全なインフラ変更フローを確立できることを確認
+- **学び**: PRレビュー自動化（terraform plan結果の自動コメント投稿）と手動承認ゲート（Environment機能）による、安全なインフラ変更フローの確立
 
 ---
 
@@ -417,10 +413,10 @@ npm run dev
 
 ---
 
-## 💡 このPoCで得た学び・気づき
+## 💡 このPoCで得た知見・設計ノウハウ
 
 ### **SageMaker・Bedrockの構築手順を実際に実装・検証できた**
-ドキュメントを読むだけでは分からない、実際のエンドポイント設定やモデルデプロイの流れを確認できました。特にSageMaker Serverlessでカスタムモデルを動かす手順は、実際に手を動かさないと理解できなかった部分が多かったです。
+ドキュメントを読むだけでは分からない、実際のモデルデプロイの流れを確認できました。特にSageMaker Serverlessでカスタムモデルを動かす際は、エンドポイント設定やモデルパッケージの配置など、実装を通じて細かな調整ポイントを確認しました。
 
 ### **マルチクラウド連携の実装経験**
 AWS と Azure の認証情報を環境変数で管理し、FastAPIから複数クラウドのAIサービスを呼び出す実装を通じて、その連携方法を習得しました。
@@ -429,10 +425,10 @@ AWS と Azure の認証情報を環境変数で管理し、FastAPIから複数�
 手動構築ではなくIaCで管理することで、設定の再現性が向上することを確認しました。
 
 ### **TerraformによるCI/CD自動化の実装手順を確認**
-GitHub ActionsでPRごとに `fmt` / `validate` / `tfsec` / `plan` を自動実行し、mainマージ後は承認付きで `apply` する流れを構築。CI/CDフローを確認しました。
+GitHub ActionsでPRごとに `fmt` / `validate` / `tfsec` / `plan` を自動実行し、mainマージ後は承認付きで `apply` する流れを構築してCI/CDフローを確認しました。
 
 ### **今後の目標**
-本PoCでAI基盤の基本的な構築手順は再現できたため、今後は実務案件でCI/CDや監視設計まで含めた実務的スキル習得を目指しています。
+PoCで得た知見を基に、本番運用を想定した構築・監視・セキュリティ設計まで含む実務的スキルの習得を目指す。
 
 ---
 

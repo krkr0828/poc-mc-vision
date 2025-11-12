@@ -14,17 +14,21 @@ Terraform/
 │   ├── main.tf
 │   ├── variables.tf
 │   ├── outputs.tf
+│   ├── .terraform.lock.hcl # Providerバージョンロックファイル（AWS Provider 5.100.0）
 │   ├── s3/                 # S3バケット
 │   ├── lambda/             # Lambda関数
 │   ├── dynamodb/           # DynamoDB テーブル
 │   ├── sagemaker/          # SageMaker エンドポイント
 │   ├── iam/                # IAM ロール・ポリシー
 │   └── cloudwatch/         # CloudWatch Logs
-└── azure/                  # Azure リソース
-    ├── backend.tf
-    ├── main.tf
-    ├── variables.tf
-    └── outputs.tf
+├── azure/                  # Azure リソース
+│   ├── backend.tf
+│   ├── main.tf
+│   ├── variables.tf
+│   └── outputs.tf
+├── README.md               # 本ファイル（Terraformデプロイガイド）
+├── DEPLOYMENT_CHECKLIST.md # デプロイチェックリスト
+└── TERRAFORM_CICD_COMPLETE_GUIDE.md # CI/CD完全ガイド（GitHub Actions）
 ```
 
 ## 🚀 デプロイ手順
@@ -33,9 +37,11 @@ Terraform/
 
 #### 1. ツールのインストール
 
-- **Terraform**: >= 1.6.0
+- **Terraform**: 1.9.8（推奨）
 - **AWS CLI**: 最新版
 - **Azure CLI**: 最新版（Azure リソースデプロイ時）
+
+> **注**: Terraform 1.9.8はGitHub Actions CI/CDワークフローでも使用されているバージョンです。バージョンを統一することで、ローカル環境とCI/CD環境での挙動の一貫性が保たれます。
 
 #### 2. 認証情報の設定
 
@@ -100,6 +106,10 @@ cd ../aws/
 # 初期化
 terraform init
 
+# Providerバージョン確認（AWS Provider 5.100.0がロックされていることを確認）
+terraform version
+terraform providers
+
 # プラン確認
 terraform plan
 
@@ -109,6 +119,8 @@ terraform apply
 # 出力確認
 terraform output
 ```
+
+> **注**: `.terraform.lock.hcl` ファイルにより、AWS Provider 5.100.0がロックされています。これにより、異なる環境（ローカル、CI/CD）でも同一バージョンが使用され、挙動の一貫性が保たれます。
 
 #### デプロイされるリソース:
 
@@ -275,6 +287,16 @@ model_version           = "2024-10-21"
 ### リソース名の変更
 
 `variables.tf` のデフォルト値を編集するか、`terraform.tfvars` で上書きしてください。
+
+---
+
+## 🔄 CI/CD パイプライン（GitHub Actions）
+
+本プロジェクトでは、**GitHub Actionsを活用したTerraform CI/CDパイプライン**を実装しています（PR時の自動検証・mainマージ後の手動承認デプロイ）。
+
+CI/CDのセットアップ手順・ワークフローの詳細については、以下のドキュメントを参照してください：
+
+**[TERRAFORM_CICD_COMPLETE_GUIDE.md](./TERRAFORM_CICD_COMPLETE_GUIDE.md)** - Personal Access Token作成、GitHub Secrets設定、Environment構成、検証手順、トラブルシューティング等を含む完全ガイド
 
 ---
 
