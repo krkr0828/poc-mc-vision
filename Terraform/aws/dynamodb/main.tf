@@ -18,9 +18,9 @@ resource "aws_dynamodb_table" "this" {
     enabled        = true
   }
 
-  # Point-in-time recovery (任意)
+  # Point-in-time recovery (PoC検証中のデータ復旧用に有効化)
   point_in_time_recovery {
-    enabled = false
+    enabled = true
   }
 
   # Server-side encryption (at-rest)

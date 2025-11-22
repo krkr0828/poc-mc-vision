@@ -38,6 +38,15 @@
 
 - [ ] SageMaker モデルファイル（sagemaker_model/model_torchscript.tar.gz）が存在することを確認
 
+- [ ] FastAPI / Pipeline Worker 用コンテナをビルドし ECR へプッシュ
+  ```bash
+  cd src/backend
+  aws ecr get-login-password --region ap-northeast-1 \
+    | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-1.amazonaws.com
+  docker build --platform linux/amd64 -t ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-1.amazonaws.com/poc-mc-vision-fastapi:latest -f Dockerfile .
+  docker push ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-1.amazonaws.com/poc-mc-vision-fastapi:latest
+  ```
+
 ### 3. S3バケットの事前作成（重要）
 
 以下のコマンドはリポジトリルートで実行します。
@@ -125,10 +134,11 @@
   ```
 
 **確認事項:**
-- [ ] 作成されるリソース数が正しいか（約20リソース）
+- [ ] 作成されるリソース数が正しいか（約30〜40リソース）
 - [ ] S3バケット名が正しいか
 - [ ] Lambda zipのS3パスが正しいか
 - [ ] SageMaker モデルのS3パスが正しいか
+- [ ] Step Functions、SNS、CloudWatch Alarms（10個）が含まれているか
 
 - [ ] デプロイ実行
   ```bash
@@ -257,6 +267,26 @@
 - [ ] CloudWatch Logs グループが作成されているか
   ```bash
   aws logs describe-log-groups --log-group-name-prefix /aws/lambda/poc-mc-vision
+  ```
+
+- [ ] Step Functions が作成されているか
+  ```bash
+  aws stepfunctions list-state-machines | grep poc-mc-vision-pipeline
+  ```
+
+- [ ] SNS トピックが作成されているか
+  ```bash
+  aws sns list-topics | grep poc-mc-vision-alerts
+  ```
+
+- [ ] CloudWatch Alarms が作成されているか（10個）
+  ```bash
+  aws cloudwatch describe-alarms --alarm-name-prefix poc-mc-vision
+  ```
+
+- [ ] ECR リポジトリが作成されているか
+  ```bash
+  aws ecr describe-repositories --repository-names poc-mc-vision-fastapi
   ```
 
 ### Azure リソース確認
@@ -537,8 +567,12 @@ Error: Access to fetch has been blocked by CORS policy
 
 ---
 
-## 📋 今回の検証で追加された機能
+## 📋 実装された主要機能
 
+- ✅ **Step Functions ワークフロー**: SageMaker→並列(Bedrock+Azure)→DynamoDB→SNS の推論パイプライン
+- ✅ **CloudWatch Alarms**: Lambda/Step Functionsの障害・遅延を自動検知（10個のアラーム）
+- ✅ **SNS Email通知**: アラーム発報時とパイプライン完了時の通知
+- ✅ **ECR コンテナリポジトリ**: FastAPI & Pipeline Worker のコンテナ管理
 - ✅ **S3 CORS設定**: ブラウザからの直接アップロード対応
 - ✅ **Azure Resource Provider登録手順**: 初回デプロイ時の必須手順
 - ✅ **Azure OpenAIエンドポイント形式**: リージョナルエンドポイントの説明
@@ -547,6 +581,6 @@ Error: Access to fetch has been blocked by CORS policy
 
 ---
 
-**チェックリスト最終更新**: 2025-10-24
+**チェックリスト最終更新**: 2025-11-22
 **想定デプロイ時間**: 約15〜20分（State管理含む）
 **対象環境**: AWS ap-northeast-1 / Azure eastus2

@@ -8,6 +8,16 @@ variable "lambda_role_name" {
   type        = string
 }
 
+variable "pipeline_worker_role_name" {
+  description = "Pipeline worker Lambda role name"
+  type        = string
+}
+
+variable "fastapi_role_name" {
+  description = "FastAPI Lambda execution role name"
+  type        = string
+}
+
 variable "s3_bucket_name" {
   description = "S3 bucket name for image uploads"
   type        = string
@@ -25,5 +35,10 @@ variable "bedrock_model_id" {
 
 variable "dynamodb_table_name" {
   description = "DynamoDB table name"
+  type        = string
+}
+
+variable "sagemaker_endpoint_name" {
+  description = "SageMaker endpoint name for pipeline worker access"
   type        = string
 }

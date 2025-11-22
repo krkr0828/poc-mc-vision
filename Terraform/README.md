@@ -15,12 +15,16 @@ Terraform/
 │   ├── variables.tf
 │   ├── outputs.tf
 │   ├── .terraform.lock.hcl # Providerバージョンロックファイル（AWS Provider 5.100.0）
-│   ├── s3/                 # S3バケット
-│   ├── lambda/             # Lambda関数
-│   ├── dynamodb/           # DynamoDB テーブル
+│   ├── lambda/             # Lambda（S3イベント処理）
+│   ├── lambda_fastapi/     # Lambda（FastAPI & Pipeline Worker）
+│   ├── step_functions/     # Step Functions
 │   ├── sagemaker/          # SageMaker エンドポイント
-│   ├── iam/                # IAM ロール・ポリシー
-│   └── cloudwatch/         # CloudWatch Logs
+│   ├── cloudwatch/         # CloudWatch Logs & Alarms
+│   ├── dynamodb/           # DynamoDB テーブル
+│   ├── s3/                 # S3バケット
+│   ├── sns/                # SNS トピック
+│   ├── ecr/                # ECR リポジトリ
+│   └── iam/                # IAM ロール・ポリシー
 ├── azure/                  # Azure リソース
 │   ├── backend.tf
 │   ├── main.tf
@@ -126,18 +130,41 @@ terraform output
 
 | リソース | 名前 | 用途 |
 |---------|------|------|
-| S3 Bucket | `poc-mc-vision-upload` | 画像アップロード用（Lambda起動トリガー） |
-| S3 CORS Configuration | - | ブラウザからの直接アップロード許可 |
-| Lambda Function | `poc-mc-vision-handler` | S3イベント処理・推論実行 |
-| DynamoDB Table | `poc-mc-vision-table` | 推論結果保存 |
+| S3 Bucket | `poc-mc-vision-upload` | 画像アップロード用（Lambdaトリガー） |
+| Lambda (S3イベント) | `poc-mc-vision-handler` | S3イベント処理・メタデータ記録 |
+| Lambda (FastAPI) | `poc-mc-vision-fastapi` | コンテナイメージ（ECR）で FastAPI を実行 |
+| Lambda (Pipeline Worker) | `poc-mc-vision-pipeline-worker` | Step Functions から呼ばれ、S3→SageMaker/Bedrock/Azure を実行 |
+| Step Functions | `poc-mc-vision-pipeline` | SageMaker→Bedrock/Azure→DynamoDB→SNS をオーケストレーション |
 | SageMaker Endpoint | `poc-mc-vision-sm` | カスタムモデル推論 (Serverless) |
-| IAM Role | `poc-mc-vision-lambda-role` | Lambda実行ロール |
-| IAM Role | `poc-mc-vision-sagemaker-role` | SageMaker実行ロール |
-| CloudWatch Logs | `/aws/lambda/poc-mc-vision-handler` | Lambda ログ（1日保持） |
+| DynamoDB Table | `poc-mc-vision-table` | 推論結果保存（TTL 24h） |
+| SNS Topic | `poc-mc-vision-alerts` | CloudWatch アラーム/パイプライン完了通知（メール購読） |
+| CloudWatch Logs & Alarms | `/aws/lambda/*`, `/aws/states/*` | FastAPI / Pipeline / S3 Lambda / Step Functions の監視 |
+| IAM Roles | 各 Lambda / SageMaker / Step Functions 用 | 実行ロール・ポリシー |
+| ECR Repository | `poc-mc-vision-fastapi` | FastAPI ＆ Pipeline Worker コンテナを格納 |
 
 > **注**: S3バケットには、フロントエンド（localhost:5173）からの直接アップロードを許可するCORS設定が含まれています。
 
 > **注**: Lambda zipとSageMakerモデルは事前作成した `poc-mc-vision-zip` バケットから参照されます。
+
+#### FastAPI / Pipeline Worker 用コンテナのビルド & プッシュ
+
+Terraform は FastAPI/Pipeline Worker Lambda に ECR イメージを参照させますが、**イメージのビルドとプッシュは別途実施が必要**です。コード更新後に以下を実行してください。
+
+```bash
+cd src/backend
+
+# AWS へログイン
+aws ecr get-login-password --region ap-northeast-1 \
+  | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-1.amazonaws.com
+
+# コンテナをビルド
+docker build --platform linux/amd64 -t ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-1.amazonaws.com/poc-mc-vision-fastapi:latest -f Dockerfile .
+
+# ECR へ push
+docker push ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-1.amazonaws.com/poc-mc-vision-fastapi:latest
+```
+
+FastAPI と Pipeline Worker は同じイメージを共有しているため、上記 push を行うだけで両方の Lambda に反映されます。
 
 #### 所要時間:
 - **約5〜10分**（SageMaker エンドポイントの起動に時間がかかります）

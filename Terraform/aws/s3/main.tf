@@ -47,11 +47,11 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
     filter {}
 
     expiration {
-      days = 30
+      days = 14
     }
 
     noncurrent_version_expiration {
-      noncurrent_days = 7
+      noncurrent_days = 3
     }
   }
 }

@@ -1,5 +1,6 @@
 import os, uuid, time, json, csv, pathlib, base64, io, logging
-from typing import List, Optional
+from datetime import datetime
+from typing import Dict, List, Optional
 from PIL import Image
 import requests
 import boto3
@@ -10,6 +11,8 @@ from dotenv import load_dotenv
 from botocore.client import Config
 from requests import Session, RequestException
 import numpy as np
+from aws_embedded_metrics import metric_scope
+from mangum import Mangum
 
 # ==== パス設定 ====
 BASE = pathlib.Path(__file__).resolve().parents[2]
@@ -39,19 +42,32 @@ AZURE_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT", "").rstrip("/")
 AZURE_KEY = os.getenv("AZURE_OPENAI_API_KEY", "")
 AZURE_DEPLOY = os.getenv("AZURE_OPENAI_DEPLOYMENT_MINI", "gpt4omini-poc")
 AZURE_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-10-21")
+AZURE_API_URL = (
+    f"{AZURE_ENDPOINT}/openai/deployments/{AZURE_DEPLOY}/chat/completions?api-version={AZURE_API_VERSION}"
+    if AZURE_ENDPOINT else ""
+)
 
 # AWS
 AWS_REGION = os.getenv("AWS_REGION", "ap-northeast-1")
 BEDROCK_MODEL_ID = os.getenv("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
 S3_UPLOAD_BUCKET = os.getenv("S3_UPLOAD_BUCKET", "poc-mc-vision-upload")
 DDB_TABLE  = os.getenv("DDB_TABLE", "poc-mc-vision-table")
+STEP_FUNCTION_ARN = os.getenv("STEP_FUNCTION_ARN", "")
+ALERT_SNS_TOPIC_ARN = os.getenv("ALERT_SNS_TOPIC_ARN", "")
 
 # ルーティング設定
 MODEL_PRESET_COST = os.getenv("MODEL_PRESET_COST", "azure:gpt-4o-mini")
 MODEL_PRESET_QUALITY = os.getenv("MODEL_PRESET_QUALITY", "aws:anthropic.claude-3-haiku-20240307-v1:0")
 
+# Guardrails / Pipeline
+USE_GUARDRAILS = os.getenv("USE_GUARDRAILS", "0") in ("1", "true", "TRUE", "True")
+BEDROCK_GUARDRAIL_ID = os.getenv("BEDROCK_GUARDRAIL_ID", "")
+BEDROCK_GUARDRAIL_VERSION = os.getenv("BEDROCK_GUARDRAIL_VERSION", "")
+PIPELINE_TTL_SECONDS = int(os.getenv("PIPELINE_TTL_SECONDS", str(24 * 3600)))
+
 s3  = boto3.client("s3", region_name=AWS_REGION, config=Config(signature_version="s3v4"))
 ddb = boto3.resource("dynamodb", region_name=AWS_REGION).Table(DDB_TABLE)
+sfn = boto3.client("stepfunctions", region_name=AWS_REGION)
 
 # ==== SageMaker Runtime (遅延初期化) ====
 _smr_client = None
@@ -76,8 +92,9 @@ def _get_bedrock_rt():
 print("USE_REAL =", USE_REAL)
 
 # ==== 構造化ロガー（JSON） ====
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logger = logging.getLogger("app")
-logger.setLevel(logging.INFO)
+logger.setLevel(getattr(logging, LOG_LEVEL, logging.INFO))
 if not logger.handlers:
     _h = logging.StreamHandler()
     _fmt = logging.Formatter('%(message)s')
@@ -89,6 +106,21 @@ def log_json(**kwargs):
         logger.info(json.dumps(kwargs, ensure_ascii=False))
     except Exception:
         logger.info(str(kwargs))
+
+@metric_scope
+def _put_latency_metric(metrics, route_name: str, latency_ms: int, success_flag: bool):
+    metrics.set_namespace("PoC/MissionControl")
+    metrics.put_dimensions({"Route": route_name})
+    metrics.put_metric("LatencyMs", latency_ms, "Milliseconds")
+    metrics.put_metric("Success", 1 if success_flag else 0, "Count")
+
+def _record_latency(route_name: str, start_time: float, success: bool) -> int:
+    latency_ms = int((time.time() - start_time) * 1000)
+    try:
+        _put_latency_metric(route_name=route_name, latency_ms=latency_ms, success_flag=success)
+    except Exception as exc:
+        logger.debug("metric emit failed: %s", exc)
+    return latency_ms
 
 # ==== 簡易APIキー検証（任意） ====
 def require_api_key(request: Request):
@@ -108,6 +140,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+handler = Mangum(app)
 
 # ==== スキーマ ====
 class AnalyzeRequest(BaseModel):
@@ -137,6 +171,19 @@ class RouteResponse(BaseModel):
 
 class S3AnalyzeReq(BaseModel):
     s3_key: str
+
+class PipelineStartRequest(BaseModel):
+    request_id: str
+    s3_key: str
+
+class PipelineStartResponse(BaseModel):
+    execution_arn: str
+    start_time: float
+
+class PipelineStatusResponse(BaseModel):
+    execution_arn: str
+    status: str
+    output: Optional[dict] = None
 
 # ==== Util ====
 def _log_csv(row: dict):
@@ -254,11 +301,9 @@ def call_azure_real(req_id: str) -> AnalyzeResponse:
     )
 
 # ==== Azure呼び出し：指数バックオフ＋タイムアウト ====
-def azure_chat_completion_with_retry(endpoint: str, deployment: str, api_version: str, api_key: str, img_bytes: bytes, user_prompt: str) -> dict:
-    url = f"{endpoint}/openai/deployments/{deployment}/chat/completions?api-version={api_version}"
+def _build_azure_payload(img_bytes: bytes, user_prompt: str) -> dict:
     img_b64 = base64.b64encode(img_bytes).decode("utf-8")
-
-    payload = {
+    return {
         "messages": [
             {"role":"system","content":[{"type":"text","text":"You are a helpful vision assistant. Describe the image briefly and output 3 tags."}]},
             {"role":"user","content":[
@@ -268,6 +313,10 @@ def azure_chat_completion_with_retry(endpoint: str, deployment: str, api_version
         ],
         "max_tokens": 128
     }
+
+def azure_chat_completion_with_retry(endpoint: str, deployment: str, api_version: str, api_key: str, img_bytes: bytes, user_prompt: str) -> dict:
+    url = f"{endpoint}/openai/deployments/{deployment}/chat/completions?api-version={api_version}"
+    payload = _build_azure_payload(img_bytes, user_prompt)
     headers = {"api-key": api_key, "Content-Type":"application/json"}
 
     session = Session()
@@ -319,38 +368,30 @@ def call_azure_from_bytes(img_bytes: bytes) -> dict:
     )
 
 # ==== SageMaker呼び出し ====
-def call_sagemaker_from_bytes(img_bytes: bytes) -> dict:
-    """
-    SageMaker Serverless Endpoint に画像をJSON形式で投げ、分類結果(JSON)を返す。
-    TorchScript形式のモデルはJSON入力が必要。
-      - 入力: 画像をNumPy配列に変換してJSON化
-      - ヘッダ: ContentType='application/json'
-      - 出力: JSON（推論結果）
-    """
-    
-    endpoint = os.environ["SAGEMAKER_ENDPOINT_NAME"]
-    
-    # 画像バイナリをPIL経由でNumPy配列に変換
-    img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
-    img = img.resize((224, 224))  # ResNet18の入力サイズ
+def _prepare_sagemaker_payload(img_bytes: bytes) -> bytes:
+    """画像を前処理して SageMaker に渡す JSON バイト列を作成"""
+    img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+    img = img.resize((224, 224))
     img_array = np.array(img, dtype=np.float32)
-    
-    # (H, W, C) -> (C, H, W) に変換
     img_array = img_array.transpose(2, 0, 1)
-    
-    # 正規化（ImageNet標準）
     mean = np.array([0.485, 0.456, 0.406]).reshape(3, 1, 1)
     std = np.array([0.229, 0.224, 0.225]).reshape(3, 1, 1)
     img_array = (img_array / 255.0 - mean) / std
-    
-    # バッチ次元を追加 (1, 3, 224, 224)
     img_array = np.expand_dims(img_array, axis=0)
-    
+    return json.dumps(img_array.tolist()).encode("utf-8")
+
+def call_sagemaker_from_bytes(img_bytes: bytes) -> dict:
+    """
+    SageMaker Serverless Endpoint に画像をJSON形式で投げ、分類結果(JSON)を返す。
+    """
+    endpoint = os.environ["SAGEMAKER_ENDPOINT_NAME"]
+    payload = _prepare_sagemaker_payload(img_bytes)
+
     smr = _get_smr()
     resp = smr.invoke_endpoint(
         EndpointName=endpoint,
         ContentType="application/json",
-        Body=json.dumps(img_array.tolist()),
+        Body=payload,
     )
     body = resp["Body"].read()
     try:
@@ -374,28 +415,26 @@ def call_sagemaker_from_bytes(img_bytes: bytes) -> dict:
             
     except Exception as e:
         result = {"raw": body.decode("utf-8", errors="ignore"), "error": str(e)}
-        
+
     return {
         "provider": "sagemaker",
         "endpoint": endpoint,
         "raw": result,
     }
 
+def _guardrail_kwargs() -> Dict[str, str]:
+    if USE_GUARDRAILS and BEDROCK_GUARDRAIL_ID and BEDROCK_GUARDRAIL_VERSION:
+        return {
+            "guardrailIdentifier": BEDROCK_GUARDRAIL_ID,
+            "guardrailVersion": BEDROCK_GUARDRAIL_VERSION
+        }
+    return {}
+
 # ==== Bedrock呼び出し ====
-def call_bedrock_from_bytes(img_bytes: bytes) -> dict:
-    """
-    Bedrock Claude 3 Haiku に画像を渡して説明文を生成。
-    - 入力: 画像バイナリ
-    - 出力: {"text": "..."} を主とする辞書
-    """
-    model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
-    brt = _get_bedrock_rt()
-
-    # 画像をbase64に
+def _build_bedrock_payload(img_bytes: bytes, media_type: str = "image/jpeg") -> dict:
+    """Step Functions用に Bedrock メッセージボディを生成"""
     b64 = base64.b64encode(img_bytes).decode("utf-8")
-
-    # Claude Messages 形式（Bedrock方言）
-    body_payload = {
+    return {
         "anthropic_version": "bedrock-2023-05-31",
         "max_tokens": 512,
         "temperature": 0.2,
@@ -407,7 +446,7 @@ def call_bedrock_from_bytes(img_bytes: bytes) -> dict:
                         "type": "image",
                         "source": {
                             "type": "base64",
-                            "media_type": "image/jpeg",
+                            "media_type": media_type,
                             "data": b64
                         }
                     },
@@ -420,32 +459,64 @@ def call_bedrock_from_bytes(img_bytes: bytes) -> dict:
         ]
     }
 
-    resp = brt.invoke_model(
-        modelId=model_id,
-        body=json.dumps(body_payload).encode("utf-8"),
-        contentType="application/json",
-        accept="application/json",
-    )
-    raw = resp["body"].read().decode("utf-8", errors="ignore")
+def call_bedrock_from_bytes(img_bytes: bytes) -> dict:
+    """
+    Bedrock Claude 3 Haiku に画像を渡して説明文を生成。
+    - 入力: 画像バイナリ
+    - 出力: {"text": "..."} を主とする辞書
+    - リトライ: 最大3回、指数バックオフ
+    """
+    model_id = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
+    brt = _get_bedrock_rt()
+    body_payload = _build_bedrock_payload(img_bytes)
+    guardrail_opts = _guardrail_kwargs()
 
-    # 正規化（content[0].text を取り出す）
-    try:
-        data = json.loads(raw)
-        text = ""
-        if isinstance(data, dict) and "content" in data and data["content"]:
-            # [{"type":"text","text":"..."}] 形式
-            for part in data["content"]:
-                if part.get("type") == "text":
-                    text += part.get("text", "")
-        norm = {"text": text.strip() or raw}
-    except Exception:
-        norm = {"text": raw}
+    max_retries = int(os.getenv("BEDROCK_MAX_RETRIES", "3"))
+    last_error = None
 
-    return {
-        "provider": "bedrock",
-        "model": model_id,
-        "result": norm
-    }
+    for attempt in range(1, max_retries + 1):
+        try:
+            resp = brt.invoke_model(
+                modelId=model_id,
+                body=json.dumps(body_payload).encode("utf-8"),
+                contentType="application/json",
+                accept="application/json",
+                **guardrail_opts,
+            )
+            raw = resp["body"].read().decode("utf-8", errors="ignore")
+
+            # 正規化（content[0].text を取り出す）
+            try:
+                data = json.loads(raw)
+                stop_reason = data.get("stop_reason")
+                if stop_reason and "guardrail" in stop_reason:
+                    norm = {"text": "ガードレールにより応答がブロックされました。", "stop_reason": stop_reason}
+                else:
+                    text = ""
+                    if isinstance(data, dict) and "content" in data and data["content"]:
+                        for part in data["content"]:
+                            if part.get("type") == "text":
+                                text += part.get("text", "")
+                    norm = {"text": text.strip() or raw}
+            except Exception:
+                norm = {"text": raw}
+
+            log_json(stage="bedrock_call", status="ok", attempt=attempt, model=model_id)
+            return {
+                "provider": "bedrock",
+                "model": model_id,
+                "result": norm
+            }
+
+        except Exception as e:
+            last_error = e
+            wait = AZURE_RETRY_BASE_SEC * (2 ** (attempt - 1))
+            log_json(stage="bedrock_call", status="retry", attempt=attempt, error=str(e), wait_sec=wait)
+            if attempt < max_retries:
+                time.sleep(wait)
+            else:
+                log_json(stage="bedrock_call", status="exhausted", error=str(e))
+                raise RuntimeError(f"Bedrock call failed after {max_retries} retries: {last_error}")
 
 # ==== 実API: Bedrock (Claude 3 Haiku) ====
 def call_bedrock_real(req_id: str) -> AnalyzeResponse:
@@ -471,20 +542,29 @@ def call_bedrock_real(req_id: str) -> AnalyzeResponse:
     }
 
     t0 = time.time()
+    guardrail_opts = _guardrail_kwargs()
     resp = client.invoke_model(
         modelId=BEDROCK_MODEL_ID,
         contentType="application/json",
         accept="application/json",
         body=json.dumps(body),
+        **guardrail_opts,
     )
     out = json.loads(resp["body"].read())
-    text = out["content"][0]["text"] if out.get("content") else ""
+    text = ""
+    if out.get("content"):
+        text = out["content"][0]["text"]
 
-    try:
-        payload = json.loads(text)
-    except Exception:
-        s, e = text.find("{"), text.rfind("}")
-        payload = json.loads(text[s:e + 1])
+    if out.get("stop_reason") and "guardrail" in out["stop_reason"]:
+        payload = {"caption": "Guardrail violation", "tags": ["guardrail"], "stop_reason": out["stop_reason"]}
+    else:
+        parsed = text or json.dumps({"caption": "", "tags": []}, ensure_ascii=False)
+        try:
+            payload = json.loads(parsed)
+        except Exception:
+            s, e = parsed.find("{"), parsed.rfind("}")
+            payload = json.loads(parsed[s:e + 1]) if s != -1 else {"caption": parsed, "tags": []}
+
 
     latency = int((time.time() - t0) * 1000)
     return AnalyzeResponse(
@@ -545,11 +625,18 @@ async def upload(file: UploadFile = File(...), file_name: Optional[str] = Form(N
 @app.post("/api/analyze/aws", response_model=AnalyzeResponse)
 async def analyze_aws(req: AnalyzeRequest):
     t0 = time.time()
-    if USE_REAL:
-        res = call_bedrock_real(req.request_id)
-    else:
-        res = _mock_result("aws", "bedrock-claude-3-haiku")
-        res.latency_ms = int((time.time() - t0) * 1000)
+    success = True
+    try:
+        if USE_REAL:
+            res = call_bedrock_real(req.request_id)
+        else:
+            res = _mock_result("aws", "bedrock-claude-3-haiku")
+            res.latency_ms = int((time.time() - t0) * 1000)
+    except Exception:
+        success = False
+        raise
+    finally:
+        _record_latency("analyze_aws", t0, success)
 
     _log_csv({
         "request_id": req.request_id,
@@ -564,11 +651,18 @@ async def analyze_aws(req: AnalyzeRequest):
 @app.post("/api/analyze/azure", response_model=AnalyzeResponse)
 async def analyze_azure(req: AnalyzeRequest):
     t0 = time.time()
-    if USE_REAL:
-        res = call_azure_real(req.request_id)
-    else:
-        res = _mock_result("azure", "gpt-4o-mini")
-        res.latency_ms = int((time.time() - t0) * 1000)
+    success = True
+    try:
+        if USE_REAL:
+            res = call_azure_real(req.request_id)
+        else:
+            res = _mock_result("azure", "gpt-4o-mini")
+            res.latency_ms = int((time.time() - t0) * 1000)
+    except Exception:
+        success = False
+        raise
+    finally:
+        _record_latency("analyze_azure", t0, success)
 
     _log_csv({
         "request_id": req.request_id,
@@ -601,12 +695,20 @@ async def route(req: RouteRequest):
     reason = f"policy={req.policy} により {provider} ({model}) を選択"
 
     # プロバイダーに応じて呼び出し
-    if provider == "azure":
-        result = call_azure_real(req.request_id) if USE_REAL else _mock_result("azure", model)
-    elif provider == "aws":
-        result = call_bedrock_real(req.request_id) if USE_REAL else _mock_result("aws", model)
-    else:
-        raise HTTPException(status_code=500, detail=f"Unknown provider: {provider}")
+    t0 = time.time()
+    success = True
+    try:
+        if provider == "azure":
+            result = call_azure_real(req.request_id) if USE_REAL else _mock_result("azure", model)
+        elif provider == "aws":
+            result = call_bedrock_real(req.request_id) if USE_REAL else _mock_result("aws", model)
+        else:
+            raise HTTPException(status_code=500, detail=f"Unknown provider: {provider}")
+    except Exception:
+        success = False
+        raise
+    finally:
+        _record_latency("route", t0, success)
 
     return RouteResponse(chosen=chosen, reason=reason, result=result)
 
@@ -614,70 +716,139 @@ async def route(req: RouteRequest):
 def analyze_from_s3(request: Request, req: S3AnalyzeReq):
     require_api_key(request)  # 任意
     t0 = time.time()
+    success = True
     request_id = f"req-{int(time.time()*1000)}"
     key = req.s3_key
 
-    if not key:
-        raise HTTPException(status_code=400, detail="s3_key is required")
-
-    log_json(stage="analyze_s3", action="start", request_id=request_id, s3_key=key)
-
-    # 1) S3からバイナリ取得
     try:
-        obj = s3.get_object(Bucket=S3_UPLOAD_BUCKET, Key=key)
-        img_bytes = obj["Body"].read()
-    except Exception as e:
-        log_json(stage="analyze_s3", action="s3_get_failed", error=str(e))
-        raise HTTPException(status_code=502, detail="failed to fetch object from S3")
+        if not key:
+            raise HTTPException(status_code=400, detail="s3_key is required")
 
-    # 2) 各プロバイダーへ解析リクエスト
-    results = []
+        log_json(stage="analyze_s3", action="start", request_id=request_id, s3_key=key)
 
-    # (A) Azure
-    if os.environ.get("USE_AZURE", "0") == "1":
         try:
-            azure_result = call_azure_from_bytes(img_bytes)
-            results.append({"provider": "azure", "result": azure_result})
+            obj = s3.get_object(Bucket=S3_UPLOAD_BUCKET, Key=key)
+            img_bytes = obj["Body"].read()
         except Exception as e:
-            log_json(stage="analyze_s3", action="azure_failed", error=str(e))
-            results.append({"provider": "azure", "error": str(e)})
+            log_json(stage="analyze_s3", action="s3_get_failed", error=str(e))
+            raise HTTPException(status_code=502, detail="failed to fetch object from S3")
 
-    # (B) SageMaker
-    if os.environ.get("USE_SAGEMAKER", "0") == "1":
+        results = []
+
+        if os.environ.get("USE_AZURE", "0") == "1":
+            try:
+                azure_result = call_azure_from_bytes(img_bytes)
+                results.append({"provider": "azure", "result": azure_result})
+            except Exception as e:
+                log_json(stage="analyze_s3", action="azure_failed", error=str(e))
+                results.append({"provider": "azure", "error": str(e)})
+
+        if os.environ.get("USE_SAGEMAKER", "0") == "1":
+            try:
+                sm_result = call_sagemaker_from_bytes(img_bytes)
+                results.append({"provider": "sagemaker", "result": sm_result})
+            except Exception as e:
+                log_json(stage="analyze_s3", action="sagemaker_failed", error=str(e))
+                results.append({"provider": "sagemaker", "error": str(e)})
+
+        if os.environ.get("USE_BEDROCK", "0") == "1":
+            try:
+                bd_result = call_bedrock_from_bytes(img_bytes)
+                results.append({"provider": "bedrock", "result": bd_result})
+            except Exception as e:
+                log_json(stage="analyze_s3", action="bedrock_failed", error=str(e))
+                results.append({"provider": "bedrock", "error": str(e)})
+
         try:
-            sm_result = call_sagemaker_from_bytes(img_bytes)
-            results.append({"provider": "sagemaker", "result": sm_result})
+            ttl = int(time.time()) + 24*3600
+            item = {
+                "request_id": request_id,
+                "s3_key": key,
+                "results": results,
+                "created_at": int(time.time()),
+                "expire_at": ttl
+            }
+            ddb.put_item(Item=item)
         except Exception as e:
-            log_json(stage="analyze_s3", action="sagemaker_failed", error=str(e))
-            results.append({"provider": "sagemaker", "error": str(e)})
+            log_json(stage="analyze_s3", action="dynamo_failed", error=str(e))
 
-    # (C) Bedrock
-    if os.environ.get("USE_BEDROCK", "0") == "1":
-        try:
-            bd_result = call_bedrock_from_bytes(img_bytes)
-            results.append({"provider": "bedrock", "result": bd_result})
-        except Exception as e:
-            log_json(stage="analyze_s3", action="bedrock_failed", error=str(e))
-            results.append({"provider": "bedrock", "error": str(e)})
+        rt = round((time.time()-t0)*1000)
+        log_json(stage="analyze_s3", action="done", request_id=request_id, rt_ms=rt)
+        return {"request_id": request_id, "results": results}
+    except HTTPException:
+        success = False
+        raise
+    except Exception:
+        success = False
+        raise
+    finally:
+        _record_latency("analyze_s3", t0, success)
 
-    # 3) DynamoDBへ保存（TTL=1日）
+@app.post("/api/pipeline/start", response_model=PipelineStartResponse)
+def start_pipeline(req: PipelineStartRequest):
+    if not STEP_FUNCTION_ARN:
+        raise HTTPException(status_code=500, detail="STEP_FUNCTION_ARN is not configured")
+    if not AZURE_ENDPOINT or not AZURE_KEY:
+        raise HTTPException(status_code=500, detail="Azure OpenAI is not configured")
+
+    t0 = time.time()
+    success = True
     try:
-        ttl = int(time.time()) + 24*3600
-        item = {
-            "request_id": request_id,
-            "s3_key": key,
-            "results": results,
-            "created_at": int(time.time()),
-            "expire_at": ttl
+        try:
+            s3.head_object(Bucket=S3_UPLOAD_BUCKET, Key=req.s3_key)
+        except Exception as exc:
+            log_json(stage="pipeline_start", action="s3_head_failed", error=str(exc))
+            raise HTTPException(status_code=404, detail=f"failed to locate s3://{S3_UPLOAD_BUCKET}/{req.s3_key}")
+
+        now_epoch = int(time.time())
+        pipeline_input = {
+            "requestId": req.request_id,
+            "s3_key": req.s3_key,
+            "timestamps": {
+                "created": now_epoch,
+                "expires": now_epoch + PIPELINE_TTL_SECONDS
+            }
         }
-        ddb.put_item(Item=item)
-    except Exception as e:
-        log_json(stage="analyze_s3", action="dynamo_failed", error=str(e))
-        # DynamoDB失敗時も結果は返す（オプション）
 
-    rt = round((time.time()-t0)*1000)
-    log_json(stage="analyze_s3", action="done", request_id=request_id, rt_ms=rt)
-    return {"request_id": request_id, "results": results}
+        resp = sfn.start_execution(
+            stateMachineArn=STEP_FUNCTION_ARN,
+            input=json.dumps(pipeline_input, ensure_ascii=False)
+        )
+        return PipelineStartResponse(execution_arn=resp["executionArn"], start_time=resp["startDate"].timestamp())
+    except HTTPException:
+        success = False
+        raise
+    except Exception as exc:
+        success = False
+        log_json(stage="pipeline_start", action="start_failed", error=str(exc))
+        raise HTTPException(status_code=500, detail="failed to start Step Functions execution")
+    finally:
+        _record_latency("pipeline_start", t0, success)
+
+@app.get("/api/pipeline/status", response_model=PipelineStatusResponse)
+def pipeline_status(execution_arn: str):
+    if not execution_arn:
+        raise HTTPException(status_code=400, detail="execution_arn is required")
+    if not STEP_FUNCTION_ARN:
+        raise HTTPException(status_code=500, detail="STEP_FUNCTION_ARN is not configured")
+
+    t0 = time.time()
+    success = True
+    try:
+        resp = sfn.describe_execution(executionArn=execution_arn)
+        output = None
+        if resp.get("output"):
+            try:
+                output = json.loads(resp["output"])
+            except Exception:
+                output = {"raw": resp["output"]}
+        return PipelineStatusResponse(execution_arn=execution_arn, status=resp["status"], output=output)
+    except Exception as exc:
+        success = False
+        log_json(stage="pipeline_status", action="describe_failed", error=str(exc))
+        raise HTTPException(status_code=404, detail="execution not found")
+    finally:
+        _record_latency("pipeline_status", t0, success)
 
 @app.get("/api/result/{request_id}")
 def get_result(request_id: str):
@@ -685,3 +856,50 @@ def get_result(request_id: str):
     if "Item" not in r:
         return {"found": False}
     return {"found": True, "item": r["Item"]}
+
+def _read_image_from_s3(s3_key: str) -> bytes:
+    obj = s3.get_object(Bucket=S3_UPLOAD_BUCKET, Key=s3_key)
+    return obj["Body"].read()
+
+def pipeline_handler(event, context):
+    """Step Functions から直接呼ばれるワーカーLambda"""
+    event = event or {}
+    task = event.get("task")
+    s3_key = event.get("s3_key")
+    request_id = event.get("request_id", f"sf-{int(time.time()*1000)}")
+
+    if not task or not s3_key:
+        raise ValueError("task and s3_key are required")
+
+    log_json(stage="pipeline_worker", action="start", task=task, s3_key=s3_key, request_id=request_id)
+
+    try:
+        img_bytes = _read_image_from_s3(s3_key)
+    except Exception as exc:
+        log_json(stage="pipeline_worker", action="s3_get_failed", error=str(exc), s3_key=s3_key)
+        raise
+
+    try:
+        if task == "sagemaker":
+            provider_result = call_sagemaker_from_bytes(img_bytes)
+        elif task == "bedrock":
+            provider_result = call_bedrock_from_bytes(img_bytes)
+        elif task == "azure":
+            provider_result = {
+                "provider": "azure",
+                "raw": call_azure_from_bytes(img_bytes)
+            }
+        else:
+            raise ValueError(f"unknown task {task}")
+    except Exception as exc:
+        log_json(stage="pipeline_worker", action="provider_failed", task=task, error=str(exc))
+        raise
+
+    response = {
+        "task": task,
+        "request_id": request_id,
+        "s3_key": s3_key,
+        "result": provider_result
+    }
+    log_json(stage="pipeline_worker", action="done", task=task, request_id=request_id)
+    return response

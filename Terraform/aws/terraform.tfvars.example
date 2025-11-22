@@ -1,0 +1,18 @@
+# PoC MC Vision - Terraform Variables Example
+# このファイルをコピーして terraform.tfvars として使用してください
+# cp terraform.tfvars.example terraform.tfvars
+# その後、以下の値を実際の値に置き換えてください
+
+# Azure OpenAI設定
+azure_openai_api_key    = "your-azure-openai-api-key-here"
+azure_openai_endpoint   = "https://eastus2.api.cognitive.microsoft.com"
+azure_openai_deployment = "gpt4omini-poc"
+azure_openai_api_version = "2024-10-21"
+
+# Bedrock Guardrails設定
+bedrock_guardrail_id      = "your-guardrail-id-here"
+bedrock_guardrail_version = "1"
+use_guardrails            = true
+
+# SNS通知設定
+alert_email = "your-email@example.com"

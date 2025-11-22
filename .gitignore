@@ -3,6 +3,8 @@
 *.tfstate
 *.tfstate.*
 *.tfstate.backup
+*.tfplan
+**/tfplan
 *.tfvars
 !terraform.tfvars.example
 override.tf
@@ -11,6 +13,9 @@ override.tf.json
 *_override.tf.json
 .terraformrc
 terraform.rc
+
+# Local tools
+.claude/
 
 # Node
 node_modules/
@@ -41,6 +46,9 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Generated artifacts
+results/
 
 # Logs
 *.log

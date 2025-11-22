@@ -60,15 +60,6 @@ output "sagemaker_endpoint_arn" {
 }
 
 # ====================
-# CloudWatch Outputs
-# ====================
-
-output "cloudwatch_log_group_name" {
-  description = "CloudWatch Logs group name"
-  value       = module.cloudwatch.log_group_name
-}
-
-# ====================
 # General Outputs
 # ====================
 
@@ -80,4 +71,38 @@ output "aws_region" {
 output "aws_account_id" {
   description = "AWS account ID"
   value       = data.aws_caller_identity.current.account_id
+}
+
+# ====================
+# Additional Outputs
+# ====================
+
+output "sns_topic_arn" {
+  description = "SNS Topic ARN for alerts"
+  value       = module.sns.topic_arn
+}
+
+output "step_functions_arn" {
+  description = "State machine ARN"
+  value       = module.step_functions.state_machine_arn
+}
+
+output "fastapi_lambda_function_url" {
+  description = "FastAPI Function URL"
+  value       = module.lambda_fastapi.function_url
+}
+
+output "fastapi_lambda_function_name" {
+  description = "FastAPI Lambda function name"
+  value       = module.lambda_fastapi.function_name
+}
+
+output "ecr_repository_url" {
+  description = "FastAPI ECR repository URL"
+  value       = module.ecr.repository_url
+}
+
+output "pipeline_worker_function_name" {
+  description = "Pipeline worker Lambda function name"
+  value       = module.lambda_pipeline_worker.function_name
 }
