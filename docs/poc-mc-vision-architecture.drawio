@@ -116,8 +116,8 @@
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="edge-fastapi-sfn" value="④ パイプライン開始" style="endArrow=block;html=1;strokeColor=#8C4FFF;strokeWidth=2;rounded=1;edgeStyle=orthogonalEdgeStyle;labelBackgroundColor=#FFFFFF;fontSize=10;" parent="1" source="fastapi" target="step-functions" edge="1">
-                    <mxGeometry relative="1" as="geometry">
-                        <mxPoint y="-30" as="offset"/>
+                    <mxGeometry x="-0.0793" y="56" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="edge-fastapi-ddb" value="⑥ 結果をDB保存" style="endArrow=block;html=1;strokeColor=#2E3A47;strokeWidth=2;rounded=1;edgeStyle=orthogonalEdgeStyle;labelBackgroundColor=#FFFFFF;fontSize=10;" parent="1" source="step-functions" target="ddb-table" edge="1">
@@ -126,7 +126,7 @@
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="edge-sfn-sns" value="⑦ 完了/失敗を通知" style="endArrow=block;html=1;strokeColor=#D35400;strokeWidth=2;rounded=1;edgeStyle=orthogonalEdgeStyle;labelBackgroundColor=#FFFFFF;fontSize=10;" parent="1" source="step-functions" target="sns-topic" edge="1">
-                    <mxGeometry x="0.3077" y="-9" relative="1" as="geometry">
+                    <mxGeometry x="-0.2331" y="-10" relative="1" as="geometry">
                         <mxPoint as="offset"/>
                     </mxGeometry>
                 </mxCell>
@@ -140,10 +140,14 @@
                     <mxGeometry relative="1" as="geometry"/>
                 </mxCell>
                 <mxCell id="edge-worker-calls-bedrock" value="⑤-B 推論リクエスト" style="endArrow=block;html=1;strokeColor=#148F77;strokeWidth=2;rounded=1;edgeStyle=orthogonalEdgeStyle;labelBackgroundColor=#FFFFFF;fontSize=10;" parent="1" source="pipeline-worker" target="bedrock" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
+                    <mxGeometry x="0.0144" y="64" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="edge-worker-calls-azure" value="⑤-B 推論リクエスト" style="endArrow=block;html=1;strokeColor=#148F77;strokeWidth=2;rounded=1;edgeStyle=orthogonalEdgeStyle;labelBackgroundColor=#FFFFFF;fontSize=10;" parent="1" source="pipeline-worker" target="azure-aoai" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
+                    <mxGeometry x="0.3398" y="-15" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
                 </mxCell>
                 <mxCell id="edge-user-gets-result" value="⑧ 結果取得リクエスト" style="endArrow=block;html=1;strokeColor=#2E3A47;strokeWidth=2;rounded=1;edgeStyle=orthogonalEdgeStyle;labelBackgroundColor=#FFFFFF;fontSize=10;dashed=1;" parent="1" source="user" target="fastapi" edge="1">
                     <mxGeometry y="30" relative="1" as="geometry">
@@ -151,7 +155,9 @@
                     </mxGeometry>
                 </mxCell>
                 <mxCell id="edge-fastapi-gets-result" value="結果をDBから取得" style="endArrow=block;html=1;strokeColor=#4D27AA;strokeWidth=2;rounded=1;edgeStyle=orthogonalEdgeStyle;dashed=1;labelBackgroundColor=#FFFFFF;fontSize=10;" parent="1" source="fastapi" target="ddb-table" edge="1">
-                    <mxGeometry relative="1" as="geometry"/>
+                    <mxGeometry x="-0.0447" y="-10" relative="1" as="geometry">
+                        <mxPoint as="offset"/>
+                    </mxGeometry>
                 </mxCell>
             </root>
         </mxGraphModel>

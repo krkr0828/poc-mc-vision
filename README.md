@@ -12,6 +12,7 @@
 | **CI/CDパイプライン** | GitHub Actionsで`tfsec`セキュリティスキャン・`plan`結果のPRコメント投稿・手動承認付き`apply`を自動化。 |
 | **監視・アラート** | CloudWatch AlarmsとSNS Email通知により、主要サービスの障害や遅延を検知できるように設定。 |
 | **AIの安全性確保** | Bedrock GuardrailsでPII（個人識別情報）検知・有害コンテンツフィルタリングを実装。 |
+| **セキュリティ基盤** | S3暗号化・バージョニング・構造化ログ・tfsecスキャンなど、基本的なセキュリティ設定を実装。 |
 
 ---
 
@@ -34,6 +35,12 @@
     *   各AIサービスを個別に推論するため、FastAPI経由で直接推論APIを実行して結果を表示します。
 
 AWS・Azureの認証情報は環境変数で管理します。Bedrock GuardrailsでPII（個人識別情報）検知と有害コンテンツフィルタリングを実行し、CloudWatch Alarmsで主要サービスの障害や遅延を検知してSNS Email通知を送信します。
+
+### **アーキテクチャ図**
+
+![構成図](./docs/構成図スクリーンショット.png)
+
+*Draw.ioファイル: [poc-mc-vision-architecture.drawio](./docs/poc-mc-vision-architecture.drawio)*
 
 ### **処理フロー**
 
@@ -61,37 +68,17 @@ React フロントエンド
     │       └── CloudWatch Logs記録
 
 【監視・アラート】
-CloudWatch Alarms（10個）+ SNS Email通知
-├── Lambda監視（7個）
+CloudWatch Alarms + SNS Email通知
+├── Lambda監視
 │   ├── FastAPI Lambda
-│   │   ├── エラー検知（Errors ≥ 1）
-│   │   ├── レイテンシ監視（Duration P95 > 閾値）
-│   │   └── スロットリング検知（Throttles ≥ 1）
+│   │   └── エラー/スロットリング検知,レイテンシ監視
 │   ├── Pipeline Worker Lambda
-│   │   ├── エラー検知（Errors ≥ 1）
-│   │   └── レイテンシ監視（Duration P95 > 閾値）
+│   │   └── レイテンシ監視,エラー検知
 │   └── S3 Ingest Lambda
-│       ├── エラー検知（Errors ≥ 1）
-│       └── レイテンシ監視（Duration P95 > 閾値）
-└── Step Functions監視（3個）
-    ├── 実行失敗検知（ExecutionsFailed ≥ 1）
-    ├── タイムアウト検知（ExecutionsTimedOut ≥ 1）
-    └── スロットリング検知（ExecutionThrottled ≥ 1）
+│       └── レイテンシ監視,エラー検知
+└── Step Functions監視
+    └── 実行失敗/スロットリング/タイムアウト検知
 ```
-
-### **アーキテクチャ図**
-
-![構成図](./docs/構成図スクリーンショット.png)
-
-*Draw.ioファイル: [poc-mc-vision-architecture.drawio](./docs/poc-mc-vision-architecture.drawio)*
-
-### **動作デモ**
-
-実際の動作画面は **`docs/PoC動作画面録画.mp4`** を参照してください。
-
-- ✅ フロントエンドからの画像アップロード
-- ✅ Azure OpenAI, AWS Bedrock, AWS SageMaker それぞれによる推論実行
-- ✅ S3への直接アップロードと解析
 
 ---
 
@@ -154,114 +141,33 @@ CloudWatch Alarms（10個）+ SNS Email通知
 
 ---
 
-## ✅ 実績サマリー
+## 💡 実装のポイント
 
-- ✅ **マルチクラウド設計**: AWS（SageMaker / Bedrock）を中心に、必要に応じて Azure OpenAI も呼び出せる推論フローを実装
-- ✅ **IaC による再現性**: AWS/Azureを単一コードベースで管理し、約10分で再構築可能
-- ✅ **ワークフローオーケストレーション**: Step Functionsで SageMaker→並列(Bedrock+Azure)→DynamoDB→SNS の推論フローが自動実行されるように構成
-- ✅ **監視・アラート**: CloudWatch Alarms + SNS Email通知で、Lambda / StepFunctions / SageMaker の障害や遅延を検知できるように設定
-- ✅ **AI出力の安全性への配慮**: Bedrock GuardrailsによるPII検知・有害コンテンツフィルタリングを実装
-- ✅ **CI/CD パイプライン**: GitHub Actionsによる自動検証・手動承認デプロイを実装
-- ✅ **セキュリティ基盤**: S3暗号化・バージョニング・構造化ログ・tfsecスキャンなど、基本的なセキュリティ設定を実装
+本PoCでは、以下の観点を意識して構成を組んでいます。
 
----
+### マルチクラウド環境でのAI基盤構成
+- AWS SageMaker Serverless・Bedrock と Azure OpenAI を、単一の API エンドポイントから呼び出せる構成としました。
+- AWS を中心としつつ、既存システムで Azure OpenAI を利用しているケースも想定し、マルチクラウド連携パターンを一通り確認できるようにしています。
 
-## 💡 このPoCで得た知見・設計ノウハウ
+### Terraform + CI/CD によるインフラ自動化
+- AWS / Azure の主要リソースを Terraform でコード化し、GitHub Actions から `fmt` / `validate` / `tfsec` / `plan` を PR ごとに自動実行するフローを組んでいます。
+- 本番相当の環境を想定し、手動承認付きの `apply` とすることで、インフラ変更をレビュー経由で反映する運用イメージを持てるようにしています。
 
-### **マルチクラウド環境でのAI基盤構築**
-AWS・Azure の認証、API連携、エラーハンドリングなどを一通り実装してみました。SageMaker Serverlessでのカスタムモデルデプロイや Bedrock Guardrails の設定など、本番運用を意識した構成も試しました。
+### Step Functions を使った推論パイプライン
+- Step Functions で SageMaker → 並列 (Bedrock + Azure) → DynamoDB → SNS 通知のフローを構成し、複数の AI サービスを組み合わせて扱う前提で設計しました。
+- Azure OpenAI のレート制限（429）など一時的なエラーを想定し、リトライ設定を入れてワークフロー全体が落ちにくいようにしています。
 
-### **Terraform + CI/CDによるインフラ自動化**
-IaC と GitHub Actions でデプロイフローを組み、PRごとに `fmt` / `validate` / `tfsec` / `plan` を自動実行するようにしました。手動承認ゲートも合わせて設定し、インフラ変更の流れを具体的にイメージできるようになりました。
-
-### **Step Functionsによるワークフローオーケストレーション**
-複数のAIサービスを並列実行しつつ、エラー時の挙動やリトライ方法をStep Functionsで実装しました。SageMaker→並列(Bedrock+Azure)→DynamoDB→SNS通知という流れを通して、ワークフロー設計の勘所をつかむことができました。
-
-### **監視・アラート体制の構築**
-CloudWatch Alarms（10個）と SNS Email 通知を組み合わせて、Lambda・Step Functions・SageMaker の障害やレイテンシを検知する仕組みを作りました。本番運用を想定したときに、どの指標を見ておくべきかを整理する良い機会になりました。
-
----
-
-## 🧪 検証環境
-
-| 項目 | 内容 |
-|------|------|
-| **実施期間** | 2025年10月〜11月（約2ヶ月） |
-| **実行環境** | AWS（東京リージョン: ap-northeast-1）＋ Azure（米国東部2: East US 2） |
-| **Terraform** | 1.9.8 |
-| **Python** | 3.12 |
-| **Node.js** | 18.x |
+### 監視・アラート設計
+- Lambda・Step Functions・SageMaker のエラー率と処理時間を CloudWatch Alarms で監視し、SNS 経由で通知することで、異常なエラー増加や遅延を早期に検知できる構成としています。
 
 ---
 
 ## 📂 ディレクトリ構造
 
-```
-poc-mc-vision/
-├── Terraform/                   # インフラ定義（AWS/Azure）
-│   ├── aws/                     # AWSリソース定義
-│   ├── azure/                   # Azureリソース（OpenAI）
-│   └── setup/                   # State管理用リソース作成スクリプト
-├── src/
-│   ├── backend/                 # FastAPI（Python 3.12）
-│   └── frontend/                # React 19 + Vite
-├── .github/workflows/           # CI/CDパイプライン（GitHub Actions）
-├── sagemaker_model/             # SageMaker用カスタムモデル
-├── scripts/                     # 運用スクリプト（Guardrail作成等）
-├── Lambda/                      # Lambda（S3イベント処理）
-├── configs/                     # 環境変数テンプレート
-└── docs/                        # アーキテクチャ図・動作デモ動画
-```
+プロジェクトの詳細なディレクトリ構造については、[docs/DIRECTORY_STRUCTURE.md](./docs/DIRECTORY_STRUCTURE.md) を参照してください。
 
 ---
 
-## 📚 クイックスタート
+## 📚 セットアップ手順
 
-**構築の流れ**: ローカル開発環境をセットアップし、TerraformでAWS/Azureリソースをデプロイ、DockerイメージをECRにプッシュすることで、約15分でマルチクラウドAI基盤が構築できます。詳細な手順は以降のセクションおよび関連ドキュメントを参照してください。
-
----
-
-#### **前提条件**
-以下のツールをインストールしてください。
-- **Terraform** (1.9.8以上)
-- **AWS CLI** (v2) + 認証情報設定済み
-- **Azure CLI** + ログイン済み
-- **Python** (3.12以上)
-- **Node.js** (18.x以上)
-- **Docker** (Lambda Container Image ビルド用、オプション)
-
-#### **ローカル開発環境のセットアップ**
-
-**Backend（FastAPI）**
-```bash
-cd src/backend
-pip install -r requirements.txt
-cp ../../configs/.env.example .env
-# .envファイルに AWS/Azure の認証情報を設定
-uvicorn main:app --reload  # http://localhost:8000 で起動
-```
-
-**Frontend（React + Vite）**
-```bash
-cd src/frontend
-npm install
-npm run dev  # http://localhost:5173 で起動
-```
-
-#### **インフラデプロイ**
-TerraformコマンドでAWSとAzureの全リソースを約10分で構築可能です。
-```bash
-cd Terraform/aws
-terraform init
-terraform plan
-terraform apply
-```
-
-**関連ドキュメント**:
-- **Terraformデプロイ手順**: [Terraform/README.md](./Terraform/README.md)
-- **デプロイチェックリスト**: [Terraform/DEPLOYMENT_CHECKLIST.md](./Terraform/DEPLOYMENT_CHECKLIST.md)
-- **Docker & ECRデプロイメント**: [docs/DOCKER_ECR_DEPLOYMENT_GUIDE.md](./docs/DOCKER_ECR_DEPLOYMENT_GUIDE.md)
-- **CI/CD完全ガイド**: [Terraform/TERRAFORM_CICD_COMPLETE_GUIDE.md](./Terraform/TERRAFORM_CICD_COMPLETE_GUIDE.md)
-
-### **今後の目標**
-PoCで得た経験を活かし、本番運用を想定した構築・監視・セキュリティ設計を含む実務経験を積んでいきたいと考えています。
+インフラのデプロイ手順やローカル開発環境のセットアップについては、[Terraform/SETUP_GUIDE.md](./Terraform/SETUP_GUIDE.md) を参照してください。
