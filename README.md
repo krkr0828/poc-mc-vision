@@ -158,7 +158,8 @@ CloudWatch Alarms + SNS Email通知
 - Azure OpenAI のレート制限（429）など一時的なエラーを想定し、リトライ設定を入れてワークフロー全体が落ちにくいようにしています。
 
 ### 監視・アラート設計
-- Lambda・Step Functions・SageMaker のエラー率と処理時間を CloudWatch Alarms で監視し、SNS 経由で通知することで、異常なエラー増加や遅延を早期に検知できる構成としています。
+- Lambda・Step Functions・SageMaker のエラーや遅延を検知できるよう、CloudWatch Alarms と SNS Email 通知を設定しています。
+- P95 レイテンシやエラー率といった指標を中心に見ることで、外れ値ではなく全体傾向を把握する前提で監視を組んでいます。
 
 ---
 
