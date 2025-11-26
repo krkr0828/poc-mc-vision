@@ -1,6 +1,17 @@
 # PoC MC Vision - セットアップガイド
 
-本ドキュメントは、PoC MC Vision プロジェクトの構築・デプロイから運用までを網羅した完全ガイドです。インフラのデプロイ手順、ローカル開発環境のセットアップ、トラブルシューティングまで、本PoCを動作させるために必要な全ての情報を記載しています。
+本ドキュメントは、PoC MC Vision プロジェクトの**Terraform特化**のセットアップガイドです。インフラのデプロイ手順、ローカル開発環境のセットアップ、トラブルシューティングを記載しています。
+
+## 📚 関連ドキュメント
+
+| ドキュメント | 内容 |
+|------------|------|
+| [docs/GETTING_STARTED.md](../docs/GETTING_STARTED.md) | **プロジェクト全体の初回セットアップガイド**（最初に読むドキュメント） |
+| [docs/CI_CD_TESTING_GUIDE.md](../docs/CI_CD_TESTING_GUIDE.md) | CI/CDの運用・テスト手順（日常的な開発フロー） |
+| [docs/DOCKER_ECR_DEPLOYMENT_GUIDE.md](../docs/DOCKER_ECR_DEPLOYMENT_GUIDE.md) | Docker・ECR技術リファレンス + 手動デプロイ手順 |
+| **このドキュメント** | Terraform特化のセットアップガイド |
+| [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md) | デプロイチェックリスト |
+| [TERRAFORM_CICD_COMPLETE_GUIDE.md](./TERRAFORM_CICD_COMPLETE_GUIDE.md) | GitHub ActionsによるCI/CD完全ガイド |
 
 ---
 
@@ -134,7 +145,7 @@ terraform output
 | Lambda (Pipeline Worker) | `poc-mc-vision-pipeline-worker` | Step Functions から呼ばれ、S3→SageMaker/Bedrock/Azure を実行 |
 | Step Functions | `poc-mc-vision-pipeline` | SageMaker→Bedrock/Azure→DynamoDB→SNS をオーケストレーション |
 | SageMaker Endpoint | `poc-mc-vision-sm` | カスタムモデル推論 (Serverless) |
-| DynamoDB Table | `poc-mc-vision-table` | 推論結果保存（TTL 24h） |
+| DynamoDB Table | `poc-mc-vision-table` | 推論結果保存（TTL 7日） |
 | SNS Topic | `poc-mc-vision-alerts` | CloudWatch アラーム/パイプライン完了通知（メール購読） |
 | CloudWatch Logs & Alarms | `/aws/lambda/*`, `/aws/states/*` | FastAPI / Pipeline / S3 Lambda / Step Functions の監視 |
 | IAM Roles | 各 Lambda / SageMaker / Step Functions 用 | 実行ロール・ポリシー |
@@ -144,9 +155,9 @@ terraform output
 
 > **注**: Lambda zipとSageMakerモデルは事前作成した `poc-mc-vision-zip` バケットから参照されます。
 
-#### FastAPI / Pipeline Worker 用コンテナのビルド & プッシュ
+#### FastAPI / Pipeline Worker 用コンテナのビルド & プッシュ（初回のみ）
 
-Terraform は FastAPI/Pipeline Worker Lambda に ECR イメージを参照させますが、**イメージのビルドとプッシュは別途実施が必要**です。コード更新後に以下を実行してください。
+Terraform は FastAPI/Pipeline Worker Lambda に ECR イメージを参照させますが、**イメージのビルドとプッシュは別途実施が必要**です。**初回のみ**以下を実行してください。
 
 ```bash
 cd src/backend
@@ -163,6 +174,10 @@ docker push ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-1.amazonaws.com/poc-mc-vision
 ```
 
 FastAPI と Pipeline Worker は同じイメージを共有しているため、上記 push を行うだけで両方の Lambda に反映されます。
+
+> **📌 CI/CD実装済み**: 初回プッシュ後は、`src/backend/`の変更を`main`ブランチにプッシュすると、GitHub Actionsが自動的にDockerイメージをビルド・プッシュ・Lambda更新を行います。
+>
+> 詳細: [docs/CI_CD_TESTING_GUIDE.md](../docs/CI_CD_TESTING_GUIDE.md)
 
 #### 所要時間:
 - **約5〜10分**（SageMaker エンドポイントの起動に時間がかかります）

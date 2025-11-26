@@ -8,6 +8,11 @@ on:
       - 'Terraform/**'
       - '.github/workflows/terraform-apply.yml'
 
+# 同じグループのワークフローは直列実行
+concurrency:
+  group: infrastructure-deployment
+  cancel-in-progress: false
+
 permissions:
   contents: read
   issues: write

@@ -29,13 +29,17 @@ GitHub ActionsによるCI/CDパイプライン設定
 ```
 .github/
 └── workflows/                  # ワークフロー定義
+    ├── docker-build-push.yml   # Dockerイメージ自動ビルド・ECRプッシュ
+    ├── terraform-apply.yml     # Terraform自動適用（mainブランチ）
+    └── terraform-plan.yml      # Terraform検証（PR）
 ```
 
 **主な機能:**
-- Terraform自動検証（fmt, validate, plan）
-- セキュリティスキャン（tfsec）
-- 手動承認付きデプロイ（terraform apply）
-- PR へのplan結果自動コメント
+- **Docker/ECR自動デプロイ**: `src/backend/`変更時、Dockerイメージを自動ビルド・ECRプッシュ・Lambda更新
+- **Terraform自動検証**: PR作成時にfmt, validate, plan, tfsecを実行
+- **Terraform自動適用**: mainブランチへのpush時にterraform applyを実行
+- **Concurrency制御**: インフラデプロイの順序を保証（Terraform → Docker）
+- **PR自動コメント**: plan結果をPRに自動投稿
 
 ### `configs/`
 環境変数テンプレートやアプリケーション設定ファイル
@@ -47,10 +51,17 @@ GitHub ActionsによるCI/CDパイプライン設定
 プロジェクトドキュメント
 
 **含まれるファイル:**
-- `DOCKER_ECR_DEPLOYMENT_GUIDE.md`: Docker・ECRデプロイメントガイド
+- **`GETTING_STARTED.md`**: プロジェクト全体の初回セットアップガイド（**最初に読むドキュメント**）
+- **`CI_CD_TESTING_GUIDE.md`**: CI/CDの運用・テスト手順書（日常的な開発フロー）
+- **`DOCKER_ECR_DEPLOYMENT_GUIDE.md`**: Docker・ECR技術リファレンス + 手動デプロイ手順
 - `DIRECTORY_STRUCTURE.md`: 本ドキュメント（ディレクトリ構造説明）
 - `構成図スクリーンショット.png`: アーキテクチャ図
 - `poc-mc-vision-architecture.drawio`: Draw.io形式のアーキテクチャ図
+
+**ドキュメントの役割分担:**
+1. **GETTING_STARTED.md** → 初めてセットアップする人向け
+2. **CI_CD_TESTING_GUIDE.md** → 日常的に開発する人向け
+3. **DOCKER_ECR_DEPLOYMENT_GUIDE.md** → 技術詳細を知りたい人、手動デプロイが必要な人向け
 
 ### `Lambda/`
 Lambda関数のソースコード

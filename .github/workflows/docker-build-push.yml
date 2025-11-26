@@ -1,0 +1,108 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/backend/**'
+
+  # Terraform Apply完了後に自動実行
+  workflow_run:
+    workflows: ["Terraform Apply"]
+    types:
+      - completed
+    branches:
+      - main
+
+  # 手動実行も可能
+  workflow_dispatch:
+
+# 同じグループのワークフローは直列実行
+concurrency:
+  group: infrastructure-deployment
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-push:
+    name: Build and Push to ECR
+    runs-on: ubuntu-latest
+
+    # pushトリガー、手動実行、またはTerraform Apply成功時のみ実行
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: poc-mc-vision-fastapi
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd src/backend
+          docker build --platform linux/amd64 \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            -t $ECR_REGISTRY/$ECR_REPOSITORY:latest \
+            -f Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Update Lambda FastAPI function
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: poc-mc-vision-fastapi
+        run: |
+          aws lambda update-function-code \
+            --function-name poc-mc-vision-fastapi \
+            --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Update Lambda Pipeline Worker function
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: poc-mc-vision-fastapi
+        run: |
+          aws lambda update-function-code \
+            --function-name poc-mc-vision-pipeline-worker \
+            --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Wait for Lambda FastAPI update
+        run: |
+          aws lambda wait function-updated \
+            --function-name poc-mc-vision-fastapi
+
+      - name: Wait for Lambda Pipeline Worker update
+        run: |
+          aws lambda wait function-updated \
+            --function-name poc-mc-vision-pipeline-worker
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "### Docker Image Build & Push Successful ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tag:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**ECR Repository:** \`poc-mc-vision-fastapi\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Updated Functions:**" >> $GITHUB_STEP_SUMMARY
+          echo "- \`poc-mc-vision-fastapi\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`poc-mc-vision-pipeline-worker\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** \`${{ github.event_name }}\`" >> $GITHUB_STEP_SUMMARY

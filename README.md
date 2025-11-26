@@ -2,14 +2,14 @@
 
 ## 🚀 エグゼクティブサマリー ＆ 主要技術成果
 
-本PoCでは、**AWSを中心としたAI推論基盤**に、検証用としてAzure OpenAIを組み合わせた構成を試しました。Terraform + CI/CDによる再現可能なインフラ管理、Step Functionsでワークフローを組み立て、CloudWatch AlarmsとBedrock Guardrailsで監視・セキュリティまわりも構築しました。
+本PoCでは、**AWSを中心としたAI推論基盤**に、検証用としてAzure OpenAIを組み合わせた構成を構築しました。Terraform + CI/CDによる再現可能なインフラ管理、Step Functionsでワークフローを組み立て、CloudWatch AlarmsとBedrock Guardrailsで監視・セキュリティまわりも構築しました。
 
 | 観点 | 実装内容 |
 | :--- | :--- |
 | **IaCによる再現性** | AWS／Azureの全リソースをTerraformでコード化し、約10分で再構築が可能。 |
 | **ワークフロー自動化** | Step Functions で SageMaker→並列(Bedrock+Azure)→DynamoDB→SNS の推論パイプラインを実装。 |
 | **マルチクラウド連携** | 単一のAPIエンドポイントからAzure OpenAIも呼び出せるようにし、マルチクラウド構成もあわせて実装。  |
-| **CI/CDパイプライン** | GitHub Actionsで`tfsec`セキュリティスキャン・`plan`結果のPRコメント投稿・手動承認付き`apply`を自動化。 |
+| **CI/CDパイプライン** | GitHub Actionsで Terraform自動検証・手動承認付きデプロイ、Docker自動デプロイを実装。Concurrency制御でインフラ→アプリの順序を保証。 |
 | **監視・アラート** | CloudWatch AlarmsとSNS Email通知により、主要サービスの障害や遅延を検知できるように設定。 |
 | **AIの安全性確保** | Bedrock GuardrailsでPII（個人識別情報）検知・有害コンテンツフィルタリングを実装。 |
 | **セキュリティ基盤** | S3暗号化・バージョニング・構造化ログ・tfsecスキャンなど、基本的なセキュリティ設定を実装。 |
@@ -115,9 +115,10 @@ CloudWatch Alarms + SNS Email通知
 - **React 19 + Vite**: フロントエンドUIを構築。
 
 ### **CI/CD パイプライン（GitHub Actions）**
-- **自動検証**: PR作成時に`terraform plan`・フォーマット・セキュリティスキャン（`tfsec`）を自動実行。
-- **手動承認デプロイ**: `main`ブランチへのマージ後、手動承認を経て`terraform apply`を実行するデプロイフロー。
-- **Plan結果の自動コメント**: 実行計画をPRへ自動投稿し、レビューの効率を向上。
+- **Terraform自動検証**: PR作成時に`terraform plan`・フォーマット・セキュリティスキャン（`tfsec`）を自動実行し、実行計画をPRへ自動コメント投稿。
+- **Terraform手動承認デプロイ**: `main`ブランチへのマージ後、手動承認を経て`terraform apply`を実行。
+- **Docker自動デプロイ**: `src/backend/`の変更を`main`ブランチにプッシュすると、Dockerイメージを自動ビルド・ECRプッシュ・Lambda更新を実行。
+- **デプロイ順序制御**: Concurrency制御により、Terraform完了後にDockerデプロイが実行される順序を保証。
 
 ---
 
@@ -137,7 +138,7 @@ CloudWatch Alarms + SNS Email通知
 - **原因と解決**: 初期設定では全ての重要度レベル（LOW/MEDIUM/HIGH）をチェック対象としていたため、影響度の低い警告が多発しました。`tfsec`の設定を調整し、HIGH重要度のみをチェック対象とすることで、セキュリティ上重要な問題に絞り込むことで解決しました。
 
 ### **その他の技術課題**
-上記の他に、SageMaker Serverlessのカスタムモデル設定、S3のCORS設定、Azure Resource Provider登録等の実装中に発生した技術課題に対処しました。
+上記の他に、SageMaker Serverlessのカスタムモデル設定、S3のCORS設定、Azure Resource Provider登録等の実装中に発生した技術課題にも適宜対処しています。
 
 ---
 
@@ -152,6 +153,7 @@ CloudWatch Alarms + SNS Email通知
 ### Terraform + CI/CD によるインフラ自動化
 - AWS / Azure の主要リソースを Terraform でコード化し、GitHub Actions から `fmt` / `validate` / `tfsec` / `plan` を PR ごとに自動実行するフローを組んでいます。
 - 本番相当の環境を想定し、手動承認付きの `apply` とすることで、インフラ変更をレビュー経由で反映する運用イメージを持てるようにしています。
+- **CI/CD実行順序の制御**: Concurrency制御により、Terraform完了後にDockerデプロイが実行される順序を保証し、Lambda設定の不整合や無駄なデプロイを防止しています。
 
 ### Step Functions を使った推論パイプライン
 - Step Functions で SageMaker → 並列 (Bedrock + Azure) → DynamoDB → SNS 通知のフローを構成し、複数の AI サービスを組み合わせて扱う前提で設計しました。
@@ -159,16 +161,42 @@ CloudWatch Alarms + SNS Email通知
 
 ### 監視・アラート設計
 - Lambda・Step Functions・SageMaker のエラーや遅延を検知できるよう、CloudWatch Alarms と SNS Email 通知を設定しています。
-- P95 レイテンシやエラー率といった指標を中心に見ることで、外れ値ではなく全体傾向を把握する前提で監視を組んでいます。
-
----
-
-## 📂 ディレクトリ構造
-
-プロジェクトの詳細なディレクトリ構造については、[docs/DIRECTORY_STRUCTURE.md](./docs/DIRECTORY_STRUCTURE.md) を参照してください。
+- P95 レイテンシやエラー数といった指標を中心に監視し、外れ値に影響されずに全体の傾向を把握できるようにしています。
 
 ---
 
 ## 📚 セットアップ手順
 
-インフラのデプロイ手順やローカル開発環境のセットアップについては、[Terraform/SETUP_GUIDE.md](./Terraform/SETUP_GUIDE.md) を参照してください。
+プロジェクトのセットアップは以下の順序で行ってください。
+
+### ステップ1: 全体の流れを把握
+
+**[docs/GETTING_STARTED.md](./docs/GETTING_STARTED.md)** - プロジェクト全体の初回セットアップガイド
+
+前提条件、Terraform実行、初回Dockerイメージプッシュ、CI/CD設定確認までの全体フローを記載しています。
+
+### ステップ2: インフラ構築
+
+| ドキュメント | 内容 |
+|------------|------|
+| **[Terraform/SETUP_GUIDE.md](./Terraform/SETUP_GUIDE.md)** | Terraformによるインフラデプロイ手順（State管理、AWS/Azureリソース作成） |
+| **[Terraform/DEPLOYMENT_CHECKLIST.md](./Terraform/DEPLOYMENT_CHECKLIST.md)** | デプロイ作業のチェックリスト（事前準備、デプロイ手順、動作確認） |
+
+### ステップ3: CI/CD設定
+
+| ドキュメント | 内容 |
+|------------|------|
+| **[Terraform/TERRAFORM_CICD_COMPLETE_GUIDE.md](./Terraform/TERRAFORM_CICD_COMPLETE_GUIDE.md)** | GitHub ActionsでのCI/CD設定手順（Secrets登録、Environment設定、動作確認） |
+
+### 日常的な開発・運用
+
+| ドキュメント | 内容 |
+|------------|------|
+| **[docs/CI_CD_TESTING_GUIDE.md](./docs/CI_CD_TESTING_GUIDE.md)** | CI/CDの使い方とテスト手順（コード変更→自動デプロイの流れ） |
+| **[docs/DOCKER_ECR_DEPLOYMENT_GUIDE.md](./docs/DOCKER_ECR_DEPLOYMENT_GUIDE.md)** | Docker・ECR技術リファレンス、手動デプロイ手順（緊急時・トラブルシューティング） |
+
+---
+
+### 🔍 プロジェクト構造
+
+プロジェクトの詳細なディレクトリ構造については、[docs/DIRECTORY_STRUCTURE.md](./docs/DIRECTORY_STRUCTURE.md) を参照してください。

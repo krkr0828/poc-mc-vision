@@ -38,7 +38,7 @@
 
 - [ ] SageMaker モデルファイル（sagemaker_model/model_torchscript.tar.gz）が存在することを確認
 
-- [ ] FastAPI / Pipeline Worker 用コンテナをビルドし ECR へプッシュ
+- [ ] FastAPI / Pipeline Worker 用コンテナをビルドし ECR へプッシュ（**初回のみ**）
   ```bash
   cd src/backend
   aws ecr get-login-password --region ap-northeast-1 \
@@ -46,6 +46,10 @@
   docker build --platform linux/amd64 -t ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-1.amazonaws.com/poc-mc-vision-fastapi:latest -f Dockerfile .
   docker push ${AWS_ACCOUNT_ID}.dkr.ecr.ap-northeast-1.amazonaws.com/poc-mc-vision-fastapi:latest
   ```
+
+  > **📌 CI/CD実装済み**: 初回プッシュ後は、`src/backend/`の変更を`main`ブランチにプッシュすると、GitHub Actionsが自動的にDockerイメージをビルド・プッシュ・Lambda更新を行います。
+  >
+  > 詳細: [docs/CI_CD_TESTING_GUIDE.md](../docs/CI_CD_TESTING_GUIDE.md)
 
 ### 3. S3バケットの事前作成（重要）
 
@@ -555,6 +559,13 @@ Error: Access to fetch has been blocked by CORS policy
 
 ## 📝 次のステップ
 
+- [ ] **CI/CD設定の確認** 🆕
+  - GitHub Secretsに以下が設定されていることを確認:
+    - `AWS_ACCESS_KEY_ID`
+    - `AWS_SECRET_ACCESS_KEY`
+    - `AWS_REGION`
+  - CI/CDの動作確認: [docs/CI_CD_TESTING_GUIDE.md](../docs/CI_CD_TESTING_GUIDE.md)
+
 - [ ] FastAPI バックエンドに環境変数を設定（`configs/.env` ファイル）
   - Azure認証情報（エンドポイント、APIキー）
   - エンドポイントは**リージョナル形式**を使用
@@ -573,6 +584,10 @@ Error: Access to fetch has been blocked by CORS policy
 - ✅ **CloudWatch Alarms**: Lambda/Step Functionsの障害・遅延を自動検知（10個のアラーム）
 - ✅ **SNS Email通知**: アラーム発報時とパイプライン完了時の通知
 - ✅ **ECR コンテナリポジトリ**: FastAPI & Pipeline Worker のコンテナ管理
+- ✅ **CI/CD パイプライン** 🆕: GitHub Actionsによる自動デプロイ
+  - Dockerイメージの自動ビルド・ECRプッシュ・Lambda更新
+  - Terraform自動検証・適用
+  - Concurrency制御によるデプロイ順序保証
 - ✅ **S3 CORS設定**: ブラウザからの直接アップロード対応
 - ✅ **Azure Resource Provider登録手順**: 初回デプロイ時の必須手順
 - ✅ **Azure OpenAIエンドポイント形式**: リージョナルエンドポイントの説明
@@ -581,6 +596,6 @@ Error: Access to fetch has been blocked by CORS policy
 
 ---
 
-**チェックリスト最終更新**: 2025-11-22
+**チェックリスト最終更新**: 2025-11-26
 **想定デプロイ時間**: 約15〜20分（State管理含む）
 **対象環境**: AWS ap-northeast-1 / Azure eastus2

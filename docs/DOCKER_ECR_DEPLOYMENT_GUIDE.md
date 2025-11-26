@@ -1,5 +1,22 @@
 # Docker & ECR デプロイメントガイド
 
+> **📌 このドキュメントの位置付け**
+>
+> このドキュメントは**技術リファレンスおよび手動デプロイ手順書**です。
+>
+> **各ドキュメントの役割**:
+> - **初回セットアップ**: [GETTING_STARTED.md](./GETTING_STARTED.md) を参照
+> - **通常の開発フロー**: [CI_CD_TESTING_GUIDE.md](./CI_CD_TESTING_GUIDE.md) を参照
+> - **このドキュメント**: 技術詳細 + 手動デプロイが必要な場合の手順
+>
+> **このドキュメントが必要なケース**:
+> - システムアーキテクチャを深く理解したい
+> - CI/CDが動作せず手動デプロイが必要（緊急時）
+> - トラブルシューティングで詳細手順が必要
+> - ローカル環境でDockerイメージをテストしたい
+
+---
+
 このドキュメントでは、PoC MC Visionプロジェクトにおける**DockerイメージのビルドからECRへのプッシュ、Lambdaでの実行までの完全なフロー**を解説します。
 
 ## 目次
@@ -274,12 +291,12 @@ app = FastAPI(title="PoC MC Vision API")
 
 # ... FastAPIのエンドポイント定義 ...
 
-# ===== エントリーポイント1: FastAPI用ハンドラ (line 143) =====
+# ===== エントリーポイント1: FastAPI用ハンドラ (line 144) =====
 handler = Mangum(app)
 # Mangumライブラリが FastAPI を Lambda ハンドラに変換
 # Lambda FastAPI から呼び出される
 
-# ===== エントリーポイント2: Pipeline Worker用ハンドラ (line 848) =====
+# ===== エントリーポイント2: Pipeline Worker用ハンドラ (line 864) =====
 def pipeline_handler(event, context):
     """
     Step Functions から呼び出される推論処理ハンドラ
@@ -383,6 +400,12 @@ module "lambda_pipeline_worker" {
 ---
 
 ## コード更新時の手順
+
+> **📌 注意**: 通常は以下の手動手順は不要です。CI/CDが自動的に実行します。
+>
+> 手動実行が必要な場合（CI/CD障害時、ローカルテスト時など）のみ、以下の手順を使用してください。
+>
+> **通常の開発フロー**: [CI_CD_TESTING_GUIDE.md](./CI_CD_TESTING_GUIDE.md) を参照
 
 ### ケース1: main.py のみ更新
 
@@ -549,64 +572,43 @@ docker build --platform linux/amd64 \
 
 ---
 
-## CI/CD自動化（オプション）
+## CI/CD自動化
 
-現在のプロジェクトではDockerイメージのビルド＆プッシュは手動ですが、GitHub Actionsで自動化することも可能です。
+**✅ CI/CDパイプラインが実装済みです**
 
-### 自動化ワークフローの例
+このプロジェクトでは、GitHub Actionsによる自動デプロイが既に実装されています。
 
-```yaml
-# .github/workflows/docker-build-push.yml
-name: Build and Push Docker Image
+### 自動化されている内容
 
-on:
-  push:
-    branches: [main]
-    paths:
-      - 'src/backend/**'
+- **`src/backend/`配下のファイルをmainブランチにプッシュ**
+  - → Dockerイメージの自動ビルド
+  - → ECRへの自動プッシュ
+  - → Lambda関数の自動更新
 
-jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+- **`Terraform/`配下のファイルをmainブランチにプッシュ**
+  - → Terraform自動適用
+  - → 完了後、Dockerイメージの自動ビルド・デプロイ
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-northeast-1
+### 詳細な手順・テスト方法
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+CI/CDの使い方、テスト方法については **[CI_CD_TESTING_GUIDE.md](./CI_CD_TESTING_GUIDE.md)** を参照してください。
 
-      - name: Build, tag, and push image to Amazon ECR
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: poc-mc-vision-fastapi
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          cd src/backend
-          docker build --platform linux/amd64 -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+### 手動デプロイが必要な場合
 
-      - name: Update Lambda functions
-        run: |
-          aws lambda update-function-code \
-            --function-name poc-mc-vision-fastapi \
-            --image-uri ${{ steps.login-ecr.outputs.registry }}/poc-mc-vision-fastapi:latest
+以下の場合のみ、このドキュメントの手動手順を使用してください：
 
-          aws lambda update-function-code \
-            --function-name poc-mc-vision-pipeline-worker \
-            --image-uri ${{ steps.login-ecr.outputs.registry }}/poc-mc-vision-fastapi:latest
-```
+- **初回セットアップ時**: ECRに初回イメージをプッシュする必要がある場合
+- **GitHub Actionsの障害時**: CI/CDが動作しない緊急時のフォールバック
+- **ローカルテスト時**: 本番環境にプッシュせずにイメージをテストしたい場合
+- **トラブルシューティング時**: 手動実行で問題を切り分けたい場合
 
-このワークフローを追加すると、`src/backend/`配下のファイルがmainブランチにプッシュされた際に、自動的にイメージがビルドされてECRにプッシュされ、Lambda関数が更新されます。
+### 実装の詳細
+
+CI/CDの実装詳細（ワークフロー定義、Concurrency制御、workflow_runトリガーなど）については以下を参照：
+
+- ワークフロー定義: `.github/workflows/docker-build-push.yml`
+- ワークフロー定義: `.github/workflows/terraform-apply.yml`
+- テスト手順: [CI_CD_TESTING_GUIDE.md](./CI_CD_TESTING_GUIDE.md)
 
 ---
 

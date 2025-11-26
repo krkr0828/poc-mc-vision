@@ -1,6 +1,12 @@
 # GitHub CI/CD セットアップガイド
 
-このガイドでは、Terraform CI/CDパイプラインを動作させるために必要なGitHub設定手順を説明します。
+このガイドでは、**Terraform CI/CDパイプライン**を動作させるために必要なGitHub設定手順を説明します。
+
+> **📌 注意**: このドキュメントはTerraform CI/CD（`terraform-plan.yml`、`terraform-apply.yml`）に特化しています。
+>
+> **Docker/ECR CI/CD**（`docker-build-push.yml`）については、以下のドキュメントを参照してください：
+> - [docs/CI_CD_TESTING_GUIDE.md](../docs/CI_CD_TESTING_GUIDE.md) - CI/CDの運用・テスト手順
+> - [docs/DOCKER_ECR_DEPLOYMENT_GUIDE.md](../docs/DOCKER_ECR_DEPLOYMENT_GUIDE.md) - Docker・ECR技術リファレンス
 
 ## 前提条件
 
@@ -550,6 +556,16 @@ Apply実行（マージ時）: 5分 × 10回/月 = 50分
 ---
 
 ## 📖 関連ドキュメント
+
+### プロジェクト内ドキュメント
+
+- **[docs/GETTING_STARTED.md](../docs/GETTING_STARTED.md)** - プロジェクト全体の初回セットアップガイド
+- **[docs/CI_CD_TESTING_GUIDE.md](../docs/CI_CD_TESTING_GUIDE.md)** - CI/CDの運用・テスト手順（Docker CI/CD含む）
+- **[docs/DOCKER_ECR_DEPLOYMENT_GUIDE.md](../docs/DOCKER_ECR_DEPLOYMENT_GUIDE.md)** - Docker・ECR技術リファレンス
+- **[SETUP_GUIDE.md](./SETUP_GUIDE.md)** - Terraform特化のセットアップガイド
+- **[DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)** - デプロイチェックリスト
+
+### 外部ドキュメント
 
 - [GitHub Actions公式ドキュメント](https://docs.github.com/en/actions)
 - [Terraform GitHub Actions](https://github.com/hashicorp/setup-terraform)
