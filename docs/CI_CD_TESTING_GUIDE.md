@@ -31,9 +31,13 @@
 
 ## 前提条件
 
+> **初回セットアップ**: GitHub Secretsの設定やEnvironmentの作成など、CI/CDの初期設定は [../Terraform/TERRAFORM_CICD_SETUP_GUIDE.md](../Terraform/TERRAFORM_CICD_SETUP_GUIDE.md) を参照してください。
+>
+> このドキュメントは**初期設定が完了していることを前提**とした運用ガイドです。
+
 ### 1. GitHub Secretsの確認
 
-リポジトリの Settings → Secrets and variables → Actions で以下のSecretsが設定されていることを確認：
+以下のSecretsが設定済みであることを確認：
 
 ```
 ✅ AWS_ACCESS_KEY_ID
@@ -41,7 +45,7 @@
 ✅ AWS_REGION (ap-northeast-1)
 ```
 
-これらは既存のTerraformワークフローで使用されているため、設定済みのはずです。
+確認方法: リポジトリの Settings → Secrets and variables → Actions
 
 ### 2. AWSリソースの確認
 
@@ -859,5 +863,3 @@ git branch --show-current
 - Concurrencyにより無駄な実行が防止される
 
 ---
-
-**Last Updated**: 2025-11-26

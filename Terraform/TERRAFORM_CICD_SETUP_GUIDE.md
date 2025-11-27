@@ -1,6 +1,6 @@
-# GitHub CI/CD セットアップガイド
+# Terraform CI/CD 初期設定ガイド
 
-このガイドでは、**Terraform CI/CDパイプライン**を動作させるために必要なGitHub設定手順を説明します。
+このガイドでは、**Terraform CI/CDパイプライン**を動作させるために必要なGitHub Actionsの初期設定手順を説明します。
 
 > **📌 注意**: このドキュメントはTerraform CI/CD（`terraform-plan.yml`、`terraform-apply.yml`）に特化しています。
 >
@@ -509,28 +509,6 @@ git push origin feature/new-lambda-function
 
 ---
 
-### 想定コスト
-
-#### GitHub Actions無料枠
-- **Freeプラン:** 2,000分/月
-- **Proプラン:** 3,000分/月
-
-#### 想定使用量（このPoC）
-- Plan実行: 約2分/回
-- Apply実行: 約5分/回
-- 月30回実行の場合: 約150分/月
-- **結論:** 無料枠内で運用可能 ✅
-
-#### コスト試算
-```
-Plan実行（PR作成時）: 2分 × 20回/月 = 40分
-Apply実行（マージ時）: 5分 × 10回/月 = 50分
----
-合計: 約90分/月（無料枠の4.5%）
-```
-
----
-
 ## 📞 サポート
 
 ### 問題が解決しない場合
@@ -564,12 +542,5 @@ Apply実行（マージ時）: 5分 × 10回/月 = 50分
 - **[docs/DOCKER_ECR_DEPLOYMENT_GUIDE.md](../docs/DOCKER_ECR_DEPLOYMENT_GUIDE.md)** - Docker・ECR技術リファレンス
 - **[SETUP_GUIDE.md](./SETUP_GUIDE.md)** - Terraform特化のセットアップガイド
 - **[DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)** - デプロイチェックリスト
-
-### 外部ドキュメント
-
-- [GitHub Actions公式ドキュメント](https://docs.github.com/en/actions)
-- [Terraform GitHub Actions](https://github.com/hashicorp/setup-terraform)
-- [AWS IAMベストプラクティス](https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html)
-- [tfsec公式ドキュメント](https://aquasecurity.github.io/tfsec/)
 
 ---

@@ -8,12 +8,6 @@
 > - **初回セットアップ**: [GETTING_STARTED.md](./GETTING_STARTED.md) を参照
 > - **通常の開発フロー**: [CI_CD_TESTING_GUIDE.md](./CI_CD_TESTING_GUIDE.md) を参照
 > - **このドキュメント**: 技術詳細 + 手動デプロイが必要な場合の手順
->
-> **このドキュメントが必要なケース**:
-> - システムアーキテクチャを深く理解したい
-> - CI/CDが動作せず手動デプロイが必要（緊急時）
-> - トラブルシューティングで詳細手順が必要
-> - ローカル環境でDockerイメージをテストしたい
 
 ---
 
@@ -632,14 +626,3 @@ CI/CDの実装詳細（ワークフロー定義、Concurrency制御、workflow_r
 4. **main.py の2つのハンドラ**:
    - `handler`: FastAPIサーバー（HTTP API）
    - `pipeline_handler`: Step Functions用推論処理（イベント駆動）
-
-### 参考リンク
-
-- [Terraform AWS Provider - Lambda](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function)
-- [AWS Lambda - Container Images](https://docs.aws.amazon.com/lambda/latest/dg/images-create.html)
-- [Amazon ECR - Docker CLI](https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-push-ecr-image.html)
-- [FastAPI - Mangum](https://mangum.io/)
-
----
-
-**Last Updated**: 2025-11-21

@@ -186,7 +186,7 @@ CloudWatch Alarms + SNS Email通知
 
 | ドキュメント | 内容 |
 |------------|------|
-| **[Terraform/TERRAFORM_CICD_COMPLETE_GUIDE.md](./Terraform/TERRAFORM_CICD_COMPLETE_GUIDE.md)** | GitHub ActionsでのCI/CD設定手順（Secrets登録、Environment設定、動作確認） |
+| **[Terraform/TERRAFORM_CICD_SETUP_GUIDE.md](./Terraform/TERRAFORM_CICD_SETUP_GUIDE.md)** | GitHub ActionsでのCI/CD初期設定手順（Secrets登録、Environment設定、動作確認） |
 
 ### 日常的な開発・運用
 

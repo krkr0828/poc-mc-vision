@@ -127,7 +127,7 @@ Terraform/
 ├── setup/                      # Terraform State管理リソース
 ├── DEPLOYMENT_CHECKLIST.md     # デプロイチェックリスト
 ├── SETUP_GUIDE.md              # セットアップガイド（デプロイ手順）
-└── TERRAFORM_CICD_COMPLETE_GUIDE.md # CI/CD完全ガイド（GitHub Actions）
+└── TERRAFORM_CICD_SETUP_GUIDE.md # CI/CD初期設定ガイド（GitHub Actions）
 ```
 
 **主要リソース:**
@@ -137,7 +137,7 @@ Terraform/
 **ドキュメント:**
 - **SETUP_GUIDE.md**: Terraformのデプロイ手順、前提条件、ローカル開発環境セットアップ、検証環境情報
 - **DEPLOYMENT_CHECKLIST.md**: デプロイ前後の確認項目チェックリスト
-- **TERRAFORM_CICD_COMPLETE_GUIDE.md**: GitHub ActionsによるCI/CDパイプラインの完全ガイド（Personal Access Token作成、GitHub Secrets設定、Environment構成、検証手順、トラブルシューティング）
+- **TERRAFORM_CICD_SETUP_GUIDE.md**: GitHub ActionsによるCI/CDパイプラインの初期設定ガイド（Personal Access Token作成、GitHub Secrets設定、Environment構成、検証手順、トラブルシューティング）
 
 ---
 

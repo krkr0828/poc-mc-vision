@@ -11,7 +11,7 @@
 | [docs/DOCKER_ECR_DEPLOYMENT_GUIDE.md](../docs/DOCKER_ECR_DEPLOYMENT_GUIDE.md) | Docker・ECR技術リファレンス + 手動デプロイ手順 |
 | **このドキュメント** | Terraform特化のセットアップガイド |
 | [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md) | デプロイチェックリスト |
-| [TERRAFORM_CICD_COMPLETE_GUIDE.md](./TERRAFORM_CICD_COMPLETE_GUIDE.md) | GitHub ActionsによるCI/CD完全ガイド |
+| [TERRAFORM_CICD_SETUP_GUIDE.md](./TERRAFORM_CICD_SETUP_GUIDE.md) | GitHub ActionsによるCI/CD初期設定ガイド |
 
 ---
 
@@ -356,7 +356,7 @@ model_version           = "2024-10-21"
 
 CI/CDのセットアップ手順・ワークフローの詳細については、以下のドキュメントを参照してください：
 
-**[TERRAFORM_CICD_COMPLETE_GUIDE.md](./TERRAFORM_CICD_COMPLETE_GUIDE.md)** - Personal Access Token作成、GitHub Secrets設定、Environment構成、検証手順、トラブルシューティング等を含む完全ガイド
+**[TERRAFORM_CICD_SETUP_GUIDE.md](./TERRAFORM_CICD_SETUP_GUIDE.md)** - Personal Access Token作成、GitHub Secrets設定、Environment構成、検証手順、トラブルシューティング等を含む初期設定ガイド
 
 ---
 
