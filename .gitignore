@@ -56,3 +56,6 @@ results/logs/*.csv
 
 # AWS
 .aws/
+
+# Lambda
+poc-mc-vision-handler.zip
