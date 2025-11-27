@@ -823,16 +823,6 @@ git branch --show-current
 
 ---
 
-## 参考リンク
-
-- [GitHub Actions - Workflow syntax](https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions)
-- [GitHub Actions - Events that trigger workflows](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows)
-- [AWS ECR - Docker push](https://docs.aws.amazon.com/AmazonECR/latest/userguide/docker-push-ecr-image.html)
-- [AWS Lambda - Container images](https://docs.aws.amazon.com/lambda/latest/dg/images-create.html)
-- [Docker - Build multi-platform images](https://docs.docker.com/build/building/multi-platform/)
-
----
-
 ## まとめ
 
 ### CI/CD実装の全体像

@@ -531,10 +531,3 @@ Error: InsufficientQuota: Insufficient quota. Cannot create/update/move resource
    ```
    
 ---
-
-## 🆘 サポート
-
-問題が発生した場合:
-1. `terraform plan` でエラー内容を確認
-2. AWS/Azure コンソールでリソース状態を確認
-3. CloudWatch Logs でLambda実行ログを確認

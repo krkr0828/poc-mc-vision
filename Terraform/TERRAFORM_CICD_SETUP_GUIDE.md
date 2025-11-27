@@ -532,15 +532,3 @@ git push origin feature/new-lambda-function
    - Required reviewers: 設定済みか
 
 ---
-
-## 📖 関連ドキュメント
-
-### プロジェクト内ドキュメント
-
-- **[docs/GETTING_STARTED.md](../docs/GETTING_STARTED.md)** - プロジェクト全体の初回セットアップガイド
-- **[docs/CI_CD_TESTING_GUIDE.md](../docs/CI_CD_TESTING_GUIDE.md)** - CI/CDの運用・テスト手順（Docker CI/CD含む）
-- **[docs/DOCKER_ECR_DEPLOYMENT_GUIDE.md](../docs/DOCKER_ECR_DEPLOYMENT_GUIDE.md)** - Docker・ECR技術リファレンス
-- **[SETUP_GUIDE.md](./SETUP_GUIDE.md)** - Terraform特化のセットアップガイド
-- **[DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)** - デプロイチェックリスト
-
----

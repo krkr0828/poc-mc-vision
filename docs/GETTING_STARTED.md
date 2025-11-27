@@ -6,10 +6,10 @@
 
 | ドキュメント | 対象読者 | 内容 |
 |------------|---------|------|
-| **このドキュメント**<br>(GETTING_STARTED.md) | 初めてセットアップする人 | プロジェクト全体の初回セットアップ手順 |
-| [CI_CD_TESTING_GUIDE.md](./CI_CD_TESTING_GUIDE.md) | 日常的に開発する人 | CI/CDの使い方、テスト手順 |
-| [DOCKER_ECR_DEPLOYMENT_GUIDE.md](./DOCKER_ECR_DEPLOYMENT_GUIDE.md) | 技術詳細を知りたい人<br>手動デプロイが必要な人 | システムアーキテクチャ<br>手動デプロイ手順 |
-| [Terraform/SETUP_GUIDE.md](../Terraform/SETUP_GUIDE.md) | Terraform詳細を知りたい人 | Terraform特化のセットアップ |
+| **このドキュメント**<br>(GETTING_STARTED.md) | プロジェクト全体の初回セットアップ手順 |
+| [CI_CD_TESTING_GUIDE.md](./CI_CD_TESTING_GUIDE.md) | CI/CDの使い方、テスト手順 |
+| [DOCKER_ECR_DEPLOYMENT_GUIDE.md](./DOCKER_ECR_DEPLOYMENT_GUIDE.md) | システムアーキテクチャ<br>手動デプロイ手順 |
+| [Terraform/SETUP_GUIDE.md](../Terraform/SETUP_GUIDE.md) | Terraform特化のセットアップ |
 
 ---
 
