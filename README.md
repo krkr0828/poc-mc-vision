@@ -2,7 +2,8 @@
 
 ## 🚀 エグゼクティブサマリー ＆ 主要技術成果
 
-本PoCでは、**AWSを中心としたAI推論基盤**に、検証用としてAzure OpenAIを組み合わせた構成を構築しました。Terraform + CI/CDによる再現可能なインフラ管理、Step Functionsでワークフローを組み立て、CloudWatch AlarmsとBedrock Guardrailsで監視・セキュリティまわりも構築しました。
+本PoCは、画像を各種 AI サービス（AWS SageMaker・Bedrock・Azure OpenAI）で推論し、その結果を集約・保存するシステムを題材に、AWS を中心とした AI 推論基盤の構築・運用に必要な要素を実装・検証したものです。
+Terraform と GitHub Actions による再現可能なインフラ管理、Step Functions による推論ワークフロー自動化、CloudWatch Alarms による監視、Bedrock Guardrails による出力制御・セキュリティ対策まで一通り実装し、本番運用を想定した構成としました。
 
 | 観点 | 実装内容 |
 | :--- | :--- |
