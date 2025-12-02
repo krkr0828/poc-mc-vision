@@ -16,40 +16,15 @@ resource "aws_cloudwatch_dashboard" "operations" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/States", "ExecutionsStarted", {
-              stat  = "Sum",
-              label = "実行開始",
-              dimensions = {
-                StateMachineArn = var.state_machine_arn
-              }
-            }],
-            [".", "ExecutionsSucceeded", {
-              stat  = "Sum",
-              label = "成功",
-              dimensions = {
-                StateMachineArn = var.state_machine_arn
-              }
-            }],
-            [".", "ExecutionsFailed", {
-              stat  = "Sum",
-              label = "失敗",
-              dimensions = {
-                StateMachineArn = var.state_machine_arn
-              }
-            }],
-            [".", "ExecutionsTimedOut", {
-              stat  = "Sum",
-              label = "タイムアウト",
-              dimensions = {
-                StateMachineArn = var.state_machine_arn
-              }
-            }]
+            ["AWS/States", "ExecutionsStarted", { StateMachineArn = var.state_machine_arn }, { stat = "Sum", label = "実行開始" }],
+            [".", "ExecutionsSucceeded", { StateMachineArn = var.state_machine_arn }, { stat = "Sum", label = "成功" }],
+            [".", "ExecutionsFailed", { StateMachineArn = var.state_machine_arn }, { stat = "Sum", label = "失敗" }],
+            [".", "ExecutionsTimedOut", { StateMachineArn = var.state_machine_arn }, { stat = "Sum", label = "タイムアウト" }]
           ]
           view   = "singleValue"
           region = data.aws_region.current.name
           title  = "Step Functions - 実行サマリー（過去1時間）"
           period = 3600
-          stat   = "Sum"
         }
         width  = 12
         height = 3
@@ -62,38 +37,10 @@ resource "aws_cloudwatch_dashboard" "operations" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/States", "ExecutionsStarted", {
-              stat  = "Sum",
-              label = "開始",
-              color = "#1f77b4",
-              dimensions = {
-                StateMachineArn = var.state_machine_arn
-              }
-            }],
-            [".", "ExecutionsSucceeded", {
-              stat  = "Sum",
-              label = "成功",
-              color = "#2ca02c",
-              dimensions = {
-                StateMachineArn = var.state_machine_arn
-              }
-            }],
-            [".", "ExecutionsFailed", {
-              stat  = "Sum",
-              label = "失敗",
-              color = "#d62728",
-              dimensions = {
-                StateMachineArn = var.state_machine_arn
-              }
-            }],
-            [".", "ExecutionsTimedOut", {
-              stat  = "Sum",
-              label = "タイムアウト",
-              color = "#ff7f0e",
-              dimensions = {
-                StateMachineArn = var.state_machine_arn
-              }
-            }]
+            ["AWS/States", "ExecutionsStarted", { StateMachineArn = var.state_machine_arn }, { stat = "Sum", label = "開始", color = "#1f77b4" }],
+            [".", "ExecutionsSucceeded", { StateMachineArn = var.state_machine_arn }, { stat = "Sum", label = "成功", color = "#2ca02c" }],
+            [".", "ExecutionsFailed", { StateMachineArn = var.state_machine_arn }, { stat = "Sum", label = "失敗", color = "#d62728" }],
+            [".", "ExecutionsTimedOut", { StateMachineArn = var.state_machine_arn }, { stat = "Sum", label = "タイムアウト", color = "#ff7f0e" }]
           ]
           view   = "timeSeries"
           region = data.aws_region.current.name
@@ -117,27 +64,9 @@ resource "aws_cloudwatch_dashboard" "operations" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/States", "ExecutionTime", {
-              stat  = "p50",
-              label = "P50",
-              dimensions = {
-                StateMachineArn = var.state_machine_arn
-              }
-            }],
-            ["...", {
-              stat  = "p95",
-              label = "P95",
-              dimensions = {
-                StateMachineArn = var.state_machine_arn
-              }
-            }],
-            ["...", {
-              stat  = "p99",
-              label = "P99",
-              dimensions = {
-                StateMachineArn = var.state_machine_arn
-              }
-            }]
+            ["AWS/States", "ExecutionTime", { StateMachineArn = var.state_machine_arn }, { stat = "p50", label = "P50" }],
+            ["...", { stat = "p95", label = "P95" }],
+            ["...", { stat = "p99", label = "P99" }]
           ]
           view   = "timeSeries"
           region = data.aws_region.current.name
@@ -164,22 +93,8 @@ resource "aws_cloudwatch_dashboard" "operations" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/SageMaker", "Invocations", {
-              stat  = "Sum",
-              label = "呼び出し回数",
-              dimensions = {
-                EndpointName = var.sagemaker_endpoint_name
-                VariantName  = "AllTraffic"
-              }
-            }],
-            [".", "ModelInvocationErrors", {
-              stat  = "Sum",
-              label = "エラー数",
-              dimensions = {
-                EndpointName = var.sagemaker_endpoint_name
-                VariantName  = "AllTraffic"
-              }
-            }]
+            ["AWS/SageMaker", "Invocations", { EndpointName = var.sagemaker_endpoint_name, VariantName = "AllTraffic" }, { stat = "Sum", label = "呼び出し回数" }],
+            [".", "ModelInvocationErrors", { EndpointName = var.sagemaker_endpoint_name, VariantName = "AllTraffic" }, { stat = "Sum", label = "エラー数" }]
           ]
           view   = "timeSeries"
           region = data.aws_region.current.name
@@ -203,30 +118,9 @@ resource "aws_cloudwatch_dashboard" "operations" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/SageMaker", "ModelLatency", {
-              stat  = "p50",
-              label = "モデルレイテンシ P50",
-              dimensions = {
-                EndpointName = var.sagemaker_endpoint_name
-                VariantName  = "AllTraffic"
-              }
-            }],
-            ["...", {
-              stat  = "p95",
-              label = "P95",
-              dimensions = {
-                EndpointName = var.sagemaker_endpoint_name
-                VariantName  = "AllTraffic"
-              }
-            }],
-            [".", "OverheadLatency", {
-              stat  = "p95",
-              label = "オーバーヘッド P95",
-              dimensions = {
-                EndpointName = var.sagemaker_endpoint_name
-                VariantName  = "AllTraffic"
-              }
-            }]
+            ["AWS/SageMaker", "ModelLatency", { EndpointName = var.sagemaker_endpoint_name, VariantName = "AllTraffic" }, { stat = "p50", label = "モデルレイテンシ P50" }],
+            ["...", { stat = "p95", label = "P95" }],
+            [".", "OverheadLatency", { EndpointName = var.sagemaker_endpoint_name, VariantName = "AllTraffic" }, { stat = "p95", label = "オーバーヘッド P95" }]
           ]
           view   = "timeSeries"
           region = data.aws_region.current.name
@@ -249,27 +143,9 @@ resource "aws_cloudwatch_dashboard" "operations" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/Lambda", "Invocations", {
-              stat  = "Sum",
-              label = "呼び出し",
-              dimensions = {
-                FunctionName = var.pipeline_worker_lambda_name
-              }
-            }],
-            [".", "Errors", {
-              stat  = "Sum",
-              label = "エラー",
-              dimensions = {
-                FunctionName = var.pipeline_worker_lambda_name
-              }
-            }],
-            [".", "Throttles", {
-              stat  = "Sum",
-              label = "スロットリング",
-              dimensions = {
-                FunctionName = var.pipeline_worker_lambda_name
-              }
-            }]
+            ["AWS/Lambda", "Invocations", { FunctionName = var.pipeline_worker_lambda_name }, { stat = "Sum", label = "呼び出し" }],
+            [".", "Errors", { FunctionName = var.pipeline_worker_lambda_name }, { stat = "Sum", label = "エラー" }],
+            [".", "Throttles", { FunctionName = var.pipeline_worker_lambda_name }, { stat = "Sum", label = "スロットリング" }]
           ]
           view   = "timeSeries"
           region = data.aws_region.current.name
@@ -293,27 +169,9 @@ resource "aws_cloudwatch_dashboard" "operations" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/Lambda", "Duration", {
-              stat  = "p50",
-              label = "P50",
-              dimensions = {
-                FunctionName = var.pipeline_worker_lambda_name
-              }
-            }],
-            ["...", {
-              stat  = "p95",
-              label = "P95",
-              dimensions = {
-                FunctionName = var.pipeline_worker_lambda_name
-              }
-            }],
-            ["...", {
-              stat  = "p99",
-              label = "P99",
-              dimensions = {
-                FunctionName = var.pipeline_worker_lambda_name
-              }
-            }]
+            ["AWS/Lambda", "Duration", { FunctionName = var.pipeline_worker_lambda_name }, { stat = "p50", label = "P50" }],
+            ["...", { stat = "p95", label = "P95" }],
+            ["...", { stat = "p99", label = "P99" }]
           ]
           view   = "timeSeries"
           region = data.aws_region.current.name
@@ -340,27 +198,9 @@ resource "aws_cloudwatch_dashboard" "operations" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/Lambda", "Invocations", {
-              stat  = "Sum",
-              label = "呼び出し",
-              dimensions = {
-                FunctionName = var.fastapi_lambda_function_name
-              }
-            }],
-            [".", "Errors", {
-              stat  = "Sum",
-              label = "エラー",
-              dimensions = {
-                FunctionName = var.fastapi_lambda_function_name
-              }
-            }],
-            [".", "Duration", {
-              stat  = "p95",
-              label = "Duration P95",
-              dimensions = {
-                FunctionName = var.fastapi_lambda_function_name
-              }
-            }]
+            ["AWS/Lambda", "Invocations", { FunctionName = var.fastapi_lambda_function_name }, { stat = "Sum", label = "呼び出し" }],
+            [".", "Errors", { FunctionName = var.fastapi_lambda_function_name }, { stat = "Sum", label = "エラー" }],
+            [".", "Duration", { FunctionName = var.fastapi_lambda_function_name }, { stat = "p95", label = "Duration P95" }]
           ]
           view   = "timeSeries"
           region = data.aws_region.current.name
@@ -383,28 +223,9 @@ resource "aws_cloudwatch_dashboard" "operations" {
         type = "metric"
         properties = {
           metrics = [
-            ["AWS/DynamoDB", "ConsumedWriteCapacityUnits", {
-              stat  = "Sum",
-              label = "書き込み消費WCU",
-              dimensions = {
-                TableName = var.dynamodb_table_name
-              }
-            }],
-            [".", "ThrottledRequests", {
-              stat  = "Sum",
-              label = "スロットル",
-              dimensions = {
-                TableName = var.dynamodb_table_name
-              }
-            }],
-            [".", "SuccessfulRequestLatency", {
-              stat  = "p95",
-              label = "レイテンシ P95",
-              dimensions = {
-                TableName = var.dynamodb_table_name
-                Operation = "PutItem"
-              }
-            }]
+            ["AWS/DynamoDB", "ConsumedWriteCapacityUnits", { TableName = var.dynamodb_table_name }, { stat = "Sum", label = "書き込み消費WCU" }],
+            [".", "ThrottledRequests", { TableName = var.dynamodb_table_name }, { stat = "Sum", label = "スロットル" }],
+            [".", "SuccessfulRequestLatency", { TableName = var.dynamodb_table_name, Operation = "PutItem" }, { stat = "p95", label = "レイテンシ P95" }]
           ]
           view   = "timeSeries"
           region = data.aws_region.current.name
