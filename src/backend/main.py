@@ -772,9 +772,44 @@ def analyze_from_s3(request: Request, req: S3AnalyzeReq):
         except Exception as e:
             log_json(stage="analyze_s3", action="dynamo_failed", error=str(e))
 
+        pipeline_execution_arn = None
+        if STEP_FUNCTION_ARN:
+            try:
+                now_epoch = int(time.time())
+                pipeline_input = {
+                    "requestId": request_id,
+                    "s3_key": key,
+                    "timestamps": {
+                        "created": now_epoch,
+                        "expires": now_epoch + PIPELINE_TTL_SECONDS
+                    }
+                }
+                resp = sfn.start_execution(
+                    stateMachineArn=STEP_FUNCTION_ARN,
+                    input=json.dumps(pipeline_input, ensure_ascii=False)
+                )
+                pipeline_execution_arn = resp.get("executionArn")
+                log_json(
+                    stage="analyze_s3",
+                    action="pipeline_started",
+                    request_id=request_id,
+                    execution_arn=pipeline_execution_arn
+                )
+            except Exception as exc:
+                log_json(
+                    stage="analyze_s3",
+                    action="pipeline_start_failed",
+                    error=str(exc),
+                    request_id=request_id
+                )
+
         rt = round((time.time()-t0)*1000)
         log_json(stage="analyze_s3", action="done", request_id=request_id, rt_ms=rt)
-        return {"request_id": request_id, "results": results}
+        return {
+            "request_id": request_id,
+            "results": results,
+            "pipeline_execution_arn": pipeline_execution_arn
+        }
     except HTTPException:
         success = False
         raise
