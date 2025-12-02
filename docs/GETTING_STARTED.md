@@ -227,7 +227,12 @@ aws ecr describe-images --repository-name poc-mc-vision-fastapi --region ap-nort
 
 # Lambda関数のログ確認
 aws logs tail /aws/lambda/poc-mc-vision-fastapi --follow --region ap-northeast-1
+
+# CloudWatch ダッシュボードでシステム全体を監視
+# AWSコンソール: CloudWatch → Dashboards → poc-mc-vision-operations
 ```
+
+**運用監視**: CloudWatch ダッシュボード（`poc-mc-vision-operations`）で、Step Functions、SageMaker、Lambda、DynamoDBの状態を一画面で確認できます。詳細は [aws-console-setup-guide.md](../aws-console-setup-guide.md#35-cloudwatch-ダッシュボードの作成運用監視画面) を参照。
 
 ---
 

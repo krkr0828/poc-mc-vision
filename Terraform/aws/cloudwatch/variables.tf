@@ -38,3 +38,13 @@ variable "latency_threshold_ms" {
   type        = number
   default     = 3000
 }
+
+variable "sagemaker_endpoint_name" {
+  description = "SageMaker endpoint name for monitoring"
+  type        = string
+}
+
+variable "dynamodb_table_name" {
+  description = "DynamoDB table name for monitoring"
+  type        = string
+}

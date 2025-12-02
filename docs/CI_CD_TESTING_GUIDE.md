@@ -569,6 +569,24 @@ aws logs tail /aws/lambda/poc-mc-vision-fastapi --follow --region ap-northeast-1
 aws logs tail /aws/lambda/poc-mc-vision-fastapi --filter-pattern "ERROR" --region ap-northeast-1
 ```
 
+### 4. CloudWatch ダッシュボードでの確認
+
+運用監視用のダッシュボードで、システム全体の状態を視覚的に確認できます：
+
+```bash
+# ダッシュボードの存在確認
+aws cloudwatch list-dashboards --region ap-northeast-1 | grep poc-mc-vision-operations
+
+# AWSコンソールでダッシュボードを開く
+# CloudWatch → Dashboards → poc-mc-vision-operations
+```
+
+**ダッシュボードで確認できる項目**:
+- Step Functions の実行状況（成功/失敗数、実行時間）
+- SageMaker エンドポイントのメトリクス（呼び出し数、エラー、レイテンシ）
+- Lambda 関数のメトリクス（Pipeline Worker、FastAPI）
+- DynamoDB のメトリクス（書き込み容量、スロットリング、レイテンシ）
+
 ---
 
 ## トラブルシューティング

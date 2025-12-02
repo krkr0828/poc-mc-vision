@@ -184,3 +184,27 @@ resource "aws_cloudwatch_metric_alarm" "sfn_throttled" {
     StateMachineArn = var.state_machine_arn
   }
 }
+
+# ====================
+# SageMaker Endpoint Monitoring
+# ====================
+
+resource "aws_cloudwatch_metric_alarm" "sagemaker_invocation_errors" {
+  alarm_name          = "${var.project_name}-sagemaker-invocation-errors"
+  alarm_description   = "SageMaker endpoint invocation errors detected"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  metric_name         = "ModelInvocationErrors"
+  namespace           = "AWS/SageMaker"
+  statistic           = "Sum"
+  threshold           = 1
+  period              = 300
+  evaluation_periods  = 1
+  treat_missing_data  = "notBreaching"
+  actions_enabled     = true
+  alarm_actions       = [var.alarm_topic_arn]
+
+  dimensions = {
+    EndpointName = var.sagemaker_endpoint_name
+    VariantName  = "AllTraffic"
+  }
+}

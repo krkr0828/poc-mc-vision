@@ -149,7 +149,7 @@
 - [ ] S3バケット名が正しいか
 - [ ] Lambda zipのS3パスが正しいか
 - [ ] SageMaker モデルのS3パスが正しいか
-- [ ] Step Functions、SNS、CloudWatch Alarms（10個）が含まれているか
+- [ ] Step Functions、SNS、CloudWatch Alarms（11個）が含まれているか
 
 - [ ] デプロイ実行
   ```bash
@@ -293,10 +293,23 @@
   aws sns list-topics | grep poc-mc-vision-alerts
   ```
 
-- [ ] CloudWatch Alarms が作成されているか（10個）
+- [ ] CloudWatch Alarms が作成されているか（11個）
   ```bash
   aws cloudwatch describe-alarms --alarm-name-prefix poc-mc-vision
   ```
+  - 10個の既存アラーム + 1個の SageMaker アラーム
+
+- [ ] CloudWatch ダッシュボードが作成されているか
+  ```bash
+  aws cloudwatch list-dashboards | grep poc-mc-vision-operations
+  ```
+
+  **コンソールで確認:**
+  - CloudWatch > ダッシュボード > `poc-mc-vision-operations`
+  - 9個のウィジェット（Step Functions、SageMaker、Lambda、DynamoDB）が表示されることを確認
+
+  **手動作成する場合:**
+  - 詳細手順: [aws-console-setup-guide.md - 3.5 CloudWatch ダッシュボードの作成](../aws-console-setup-guide.md#35-cloudwatch-ダッシュボードの作成運用監視画面)
 
 - [ ] ECR リポジトリが作成されているか
   ```bash
@@ -574,7 +587,8 @@ Error: Access to fetch has been blocked by CORS policy
 ## 📋 実装された主要機能
 
 - ✅ **Step Functions ワークフロー**: SageMaker→並列(Bedrock+Azure)→DynamoDB→SNS の推論パイプライン
-- ✅ **CloudWatch Alarms**: Lambda/Step Functionsの障害・遅延を自動検知（10個のアラーム）
+- ✅ **CloudWatch Alarms**: Lambda/Step Functions/SageMakerの障害・遅延を自動検知（11個のアラーム）
+- ✅ **CloudWatch ダッシュボード**: システム全体の健全性を一目で把握できる運用監視画面（9個のウィジェット）
 - ✅ **SNS Email通知**: アラーム発報時とパイプライン完了時の通知
 - ✅ **ECR コンテナリポジトリ**: FastAPI & Pipeline Worker のコンテナ管理
 - ✅ **CI/CD パイプライン** 🆕: GitHub Actionsによる自動デプロイ

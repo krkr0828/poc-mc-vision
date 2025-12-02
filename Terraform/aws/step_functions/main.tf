@@ -76,8 +76,8 @@ resource "aws_sfn_state_machine" "this" {
   role_arn = aws_iam_role.this.arn
 
   definition = templatefile("${path.module}/definition.json.tpl", {
-    ddb_table_name = var.dynamodb_table_name
-    sns_topic_arn  = var.sns_topic_arn
+    ddb_table_name    = var.dynamodb_table_name
+    sns_topic_arn     = var.sns_topic_arn
     lambda_worker_arn = var.lambda_worker_arn
   })
 

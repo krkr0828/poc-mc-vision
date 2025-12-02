@@ -147,7 +147,8 @@ terraform output
 | SageMaker Endpoint | `poc-mc-vision-sm` | カスタムモデル推論 (Serverless) |
 | DynamoDB Table | `poc-mc-vision-table` | 推論結果保存（TTL 7日） |
 | SNS Topic | `poc-mc-vision-alerts` | CloudWatch アラーム/パイプライン完了通知（メール購読） |
-| CloudWatch Logs & Alarms | `/aws/lambda/*`, `/aws/states/*` | FastAPI / Pipeline / S3 Lambda / Step Functions の監視 |
+| CloudWatch Logs & Alarms | `/aws/lambda/*`, `/aws/states/*` | FastAPI / Pipeline / S3 Lambda / Step Functions / SageMaker の監視（11個のアラーム） |
+| CloudWatch Dashboard | `poc-mc-vision-operations` | 運用監視ダッシュボード（9個のウィジェット） |
 | IAM Roles | 各 Lambda / SageMaker / Step Functions 用 | 実行ロール・ポリシー |
 | ECR Repository | `poc-mc-vision-fastapi` | FastAPI ＆ Pipeline Worker コンテナを格納 |
 

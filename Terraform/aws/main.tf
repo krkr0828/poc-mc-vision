@@ -27,15 +27,15 @@ data "aws_caller_identity" "current" {}
 module "iam" {
   source = "./iam"
 
-  project_name            = var.project_name
-  lambda_role_name        = var.lambda_role_name
-  fastapi_role_name       = var.fastapi_lambda_role_name
+  project_name              = var.project_name
+  lambda_role_name          = var.lambda_role_name
+  fastapi_role_name         = var.fastapi_lambda_role_name
   pipeline_worker_role_name = var.pipeline_worker_role_name
-  s3_bucket_name          = var.s3_bucket_name
-  lambda_zip_bucket       = var.lambda_zip_bucket
-  bedrock_model_id        = var.bedrock_model_id
-  dynamodb_table_name     = var.dynamodb_table_name
-  sagemaker_endpoint_name = var.sagemaker_endpoint_name
+  s3_bucket_name            = var.s3_bucket_name
+  lambda_zip_bucket         = var.lambda_zip_bucket
+  bedrock_model_id          = var.bedrock_model_id
+  dynamodb_table_name       = var.dynamodb_table_name
+  sagemaker_endpoint_name   = var.sagemaker_endpoint_name
 }
 
 module "s3" {
@@ -74,6 +74,8 @@ module "cloudwatch" {
   state_machine_arn            = module.step_functions.state_machine_arn
   alarm_topic_arn              = module.sns.topic_arn
   log_retention_days           = var.log_retention_days
+  sagemaker_endpoint_name      = module.sagemaker.endpoint_name
+  dynamodb_table_name          = module.dynamodb.table_name
 }
 
 module "lambda" {
@@ -125,30 +127,30 @@ module "step_functions" {
 module "lambda_fastapi" {
   source = "./lambda_fastapi"
 
-  function_name            = var.fastapi_lambda_function_name
-  lambda_role_arn          = module.iam.fastapi_lambda_role_arn
-  memory_size              = var.fastapi_lambda_memory_size
-  timeout                  = var.fastapi_lambda_timeout
-  function_url_auth_type   = var.fastapi_function_url_auth_type
-  image_uri                = "${module.ecr.repository_url}:${var.fastapi_image_tag}"
+  function_name          = var.fastapi_lambda_function_name
+  lambda_role_arn        = module.iam.fastapi_lambda_role_arn
+  memory_size            = var.fastapi_lambda_memory_size
+  timeout                = var.fastapi_lambda_timeout
+  function_url_auth_type = var.fastapi_function_url_auth_type
+  image_uri              = "${module.ecr.repository_url}:${var.fastapi_image_tag}"
   environment = {
-    S3_UPLOAD_BUCKET          = var.s3_bucket_name
-    DDB_TABLE                 = var.dynamodb_table_name
-    SAGEMAKER_ENDPOINT_NAME   = var.sagemaker_endpoint_name
-    BEDROCK_MODEL_ID          = var.bedrock_model_id
-    STEP_FUNCTION_ARN         = module.step_functions.state_machine_arn
-    ALERT_SNS_TOPIC_ARN       = module.sns.topic_arn
-    AZURE_OPENAI_ENDPOINT     = var.azure_openai_endpoint
-    AZURE_OPENAI_API_KEY      = var.azure_openai_api_key
+    S3_UPLOAD_BUCKET             = var.s3_bucket_name
+    DDB_TABLE                    = var.dynamodb_table_name
+    SAGEMAKER_ENDPOINT_NAME      = var.sagemaker_endpoint_name
+    BEDROCK_MODEL_ID             = var.bedrock_model_id
+    STEP_FUNCTION_ARN            = module.step_functions.state_machine_arn
+    ALERT_SNS_TOPIC_ARN          = module.sns.topic_arn
+    AZURE_OPENAI_ENDPOINT        = var.azure_openai_endpoint
+    AZURE_OPENAI_API_KEY         = var.azure_openai_api_key
     AZURE_OPENAI_DEPLOYMENT_MINI = var.azure_openai_deployment
-    AZURE_OPENAI_API_VERSION  = var.azure_openai_api_version
-    USE_AZURE                 = "1"
-    USE_SAGEMAKER             = "1"
-    USE_BEDROCK               = "1"
-    USE_REAL                  = "1"
-    USE_GUARDRAILS            = var.use_guardrails ? "1" : "0"
-    BEDROCK_GUARDRAIL_ID      = var.bedrock_guardrail_id
-    BEDROCK_GUARDRAIL_VERSION = var.bedrock_guardrail_version
+    AZURE_OPENAI_API_VERSION     = var.azure_openai_api_version
+    USE_AZURE                    = "1"
+    USE_SAGEMAKER                = "1"
+    USE_BEDROCK                  = "1"
+    USE_REAL                     = "1"
+    USE_GUARDRAILS               = var.use_guardrails ? "1" : "0"
+    BEDROCK_GUARDRAIL_ID         = var.bedrock_guardrail_id
+    BEDROCK_GUARDRAIL_VERSION    = var.bedrock_guardrail_version
   }
 
   depends_on = [
@@ -169,20 +171,20 @@ module "lambda_pipeline_worker" {
   function_url_auth_type = "NONE"
   image_command          = ["main.pipeline_handler"]
   environment = {
-    S3_UPLOAD_BUCKET         = var.s3_bucket_name
-    SAGEMAKER_ENDPOINT_NAME  = var.sagemaker_endpoint_name
-    BEDROCK_MODEL_ID         = var.bedrock_model_id
-    USE_SAGEMAKER            = "1"
-    USE_BEDROCK              = "1"
-    USE_AZURE                = "1"
-    AZURE_OPENAI_ENDPOINT    = var.azure_openai_endpoint
-    AZURE_OPENAI_API_KEY     = var.azure_openai_api_key
+    S3_UPLOAD_BUCKET             = var.s3_bucket_name
+    SAGEMAKER_ENDPOINT_NAME      = var.sagemaker_endpoint_name
+    BEDROCK_MODEL_ID             = var.bedrock_model_id
+    USE_SAGEMAKER                = "1"
+    USE_BEDROCK                  = "1"
+    USE_AZURE                    = "1"
+    AZURE_OPENAI_ENDPOINT        = var.azure_openai_endpoint
+    AZURE_OPENAI_API_KEY         = var.azure_openai_api_key
     AZURE_OPENAI_DEPLOYMENT_MINI = var.azure_openai_deployment
-    AZURE_OPENAI_API_VERSION = var.azure_openai_api_version
-    USE_REAL                 = "1"
-    USE_GUARDRAILS           = var.use_guardrails ? "1" : "0"
-    BEDROCK_GUARDRAIL_ID     = var.bedrock_guardrail_id
-    BEDROCK_GUARDRAIL_VERSION = var.bedrock_guardrail_version
+    AZURE_OPENAI_API_VERSION     = var.azure_openai_api_version
+    USE_REAL                     = "1"
+    USE_GUARDRAILS               = var.use_guardrails ? "1" : "0"
+    BEDROCK_GUARDRAIL_ID         = var.bedrock_guardrail_id
+    BEDROCK_GUARDRAIL_VERSION    = var.bedrock_guardrail_version
   }
 
   depends_on = [
