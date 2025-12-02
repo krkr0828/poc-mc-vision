@@ -74,6 +74,11 @@ aws sts get-caller-identity
 
 ## ステップ2: AWSリソースの作成（Terraform）
 
+> **初回のみ: ECR を手動で作成**
+>
+> 初回は ECR リポジトリ `poc-mc-vision-fastapi` が存在しないため、そのまま Terraform を最後まで実行すると Lambda 作成で失敗します。  
+> 先に AWS コンソール等で空のリポジトリを作成しておくか、Terraform を `-target=module.ecr` で部分適用したあとに Docker イメージを push してください。2 回目以降は通常どおり `terraform apply` を実行すれば問題ありません。
+
 ### 2-1. リポジトリのクローン
 
 ```bash
@@ -109,7 +114,7 @@ terraform apply
 
 ## ステップ3: 初回Dockerイメージのプッシュ
 
-初回のみ、手動でDockerイメージをECRにプッシュする必要があります。
+初回のみ、手動でDockerイメージをECRにプッシュする必要があります（前ステップで ECR リポジトリを用意済みであることが前提です）。
 
 ### 方法A: 手動プッシュ（推奨）
 

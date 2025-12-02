@@ -68,6 +68,9 @@ module "ecr" {
   repository_name = "poc-mc-vision-fastapi"
 }
 # → リポジトリのみ作成（イメージは空）
+#    ※初回はこのリポジトリ自体が存在しないと Lambda 作成が失敗するため、
+#      AWS コンソールで先行作成するか `terraform apply -target=module.ecr` で
+#      リポジトリだけ作成してから Docker イメージを push してください。
 
 # 2. Lambda FastAPI の作成
 module "lambda_fastapi" {

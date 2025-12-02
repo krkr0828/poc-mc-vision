@@ -150,6 +150,7 @@
 - [ ] Lambda zipのS3パスが正しいか
 - [ ] SageMaker モデルのS3パスが正しいか
 - [ ] Step Functions、SNS、CloudWatch Alarms（11個）が含まれているか
+- [ ] （初回のみ）ECR `poc-mc-vision-fastapi` が事前に作成済みか
 
 - [ ] デプロイ実行
   ```bash
@@ -237,20 +238,20 @@
   ```
 
 - [ ] 取得した値をメモ
-  - エンドポイントURL（リージョナル形式: `https://eastus2.api.cognitive.microsoft.com`）
+  - エンドポイントURL（例: `https://aoai-poc-vision-eastus2.openai.azure.com`）
   - APIキー（32文字または96文字）
   - デプロイメント名（`gpt4omini-poc`）
   - APIバージョン（`2024-10-21`）
 
 - [ ] FastAPI の環境変数に設定（`configs/.env` ファイル）
   ```bash
-  AZURE_OPENAI_ENDPOINT="https://eastus2.api.cognitive.microsoft.com"
+  AZURE_OPENAI_ENDPOINT="https://aoai-poc-vision-eastus2.openai.azure.com"
   AZURE_OPENAI_API_KEY="<取得したAPIキー>"
   AZURE_OPENAI_DEPLOYMENT_MINI="gpt4omini-poc"
   AZURE_OPENAI_API_VERSION="2024-10-21"
   ```
 
-> **注意**: エンドポイントは**リージョナル形式**（`https://<region>.api.cognitive.microsoft.com`）です。カスタムサブドメイン形式（`https://<resource-name>.openai.azure.com`）ではありません。
+> **注意**: Azure OpenAI の REST API は **リソース固有のカスタムドメイン**（`https://<resource-name>.openai.azure.com`）を使用します。Azure Portal の「Keys and Endpoint」に表示される URL をそのまま設定してください。
 
 ---
 
@@ -469,7 +470,7 @@ Error: Failed to resolve 'aoai-poc-vision-eastus2.openai.azure.com'
 **解決策:** `configs/.env` のエンドポイントを修正
 ```bash
 # 正しい形式（リージョナルエンドポイント）
-AZURE_OPENAI_ENDPOINT="https://eastus2.api.cognitive.microsoft.com"
+AZURE_OPENAI_ENDPOINT="https://aoai-poc-vision-eastus2.openai.azure.com"
 
 # 間違った形式（カスタムサブドメイン）- 使用不可
 # AZURE_OPENAI_ENDPOINT="https://aoai-poc-vision-eastus2.openai.azure.com"

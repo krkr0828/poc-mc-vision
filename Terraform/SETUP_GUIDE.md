@@ -113,6 +113,13 @@ chmod +x create-state-backend.sh
 
 ### ステップ2: AWS リソースのデプロイ
 
+> **初回の注意**: ECR リポジトリ `poc-mc-vision-fastapi` が存在しない状態でフル `terraform apply` を行うと、Lambda（コンテナ参照）がイメージを取得できず失敗します。  
+> 対処方法は 2 通りです。
+> 1. AWS コンソールで空のリポジトリを先に作成してから `terraform apply` を実行する  
+> 2. `terraform apply -target=module.ecr` で ECR だけ作成 → Docker イメージを push → その後フル `terraform apply`
+>
+> いずれかの手順で ECR が先に存在する状態を作っておいてください。2 回目以降は通常の `terraform apply` で問題ありません。
+
 ```bash
 cd ../aws/
 
@@ -268,19 +275,19 @@ terraform output api_version
 
 #### エンドポイント形式について
 
-Azure OpenAIのエンドポイントは**リージョナルエンドポイント形式**です：
+Azure OpenAI の REST エンドポイントは **リソース固有のカスタムドメイン**です：
 
 ```
-https://<region>.api.cognitive.microsoft.com/
-例: https://eastus2.api.cognitive.microsoft.com/
+https://<resource-name>.openai.azure.com/
+例: https://aoai-poc-vision-eastus2.openai.azure.com/
 ```
 
-> **注**: カスタムサブドメイン形式（`https://<resource-name>.openai.azure.com/`）ではありません。
+> **注**: 旧来のリージョナルドメイン（`https://<region>.api.cognitive.microsoft.com/`）では 401 エラーになるため、Azure ポータルの「Keys and Endpoint」に記載された URL を設定してください。
 
 取得した情報を FastAPI の環境変数（`configs/.env` ファイル）に設定してください：
 
 ```bash
-AZURE_OPENAI_ENDPOINT="https://eastus2.api.cognitive.microsoft.com"
+AZURE_OPENAI_ENDPOINT="https://aoai-poc-vision-eastus2.openai.azure.com"
 AZURE_OPENAI_API_KEY="<取得したAPIキー>"
 AZURE_OPENAI_DEPLOYMENT_MINI="gpt4omini-poc"
 AZURE_OPENAI_API_VERSION="2024-10-21"
@@ -368,6 +375,7 @@ CI/CDのセットアップ手順・ワークフローの詳細については、
 - **データは完全に削除**されます（S3、DynamoDB等）
 - State管理用リソースは最後に削除
 - **S3バケット内のファイルは事前削除が必要**（バージョニング有効のため）
+- **ECR リポジトリを削除する前に、すべてのイメージとタグを削除してください**（イメージが残っていると `terraform destroy` で失敗します）
 
 ### 削除手順
 
@@ -399,11 +407,21 @@ aws s3api delete-objects \
   --bucket poc-mc-vision-upload \
   --delete file:///tmp/s3-markers.json
 
-# 3. AWS リソース削除
+# 3. ECRリポジトリ内のイメージ削除
+aws ecr list-images \
+  --repository-name poc-mc-vision-fastapi \
+  --query 'imageIds[*]' \
+  --output json > /tmp/ecr-images.json
+
+aws ecr batch-delete-image \
+  --repository-name poc-mc-vision-fastapi \
+  --image-ids file:///tmp/ecr-images.json
+
+# 4. AWS リソース削除
 cd ../aws/
 terraform destroy
 
-# 4. State管理用リソース削除（任意）
+# 5. State管理用リソース削除（任意）
 cd ../setup/
 aws dynamodb delete-table --table-name poc-mc-vision-terraform-locks
 aws s3 rb s3://poc-mc-vision-terraform-state-aws --force
@@ -507,12 +525,12 @@ Error: Failed to resolve 'aoai-poc-vision-eastus2.openai.azure.com'
 **原因**: エンドポイントURLの形式が間違っています。
 
 **解決策**:
-- 正しいエンドポイント形式: `https://eastus2.api.cognitive.microsoft.com/`
-- 間違った形式: `https://aoai-poc-vision-eastus2.openai.azure.com/`
+- 正しいエンドポイント形式: `https://aoai-poc-vision-eastus2.openai.azure.com/`
+- 間違った形式: `https://eastus2.api.cognitive.microsoft.com/`
 
 `configs/.env` ファイルのエンドポイントを修正してください：
 ```bash
-AZURE_OPENAI_ENDPOINT="https://eastus2.api.cognitive.microsoft.com"
+AZURE_OPENAI_ENDPOINT="https://aoai-poc-vision-eastus2.openai.azure.com"
 ```
 
 ### Azure OpenAIクォータ不足エラー

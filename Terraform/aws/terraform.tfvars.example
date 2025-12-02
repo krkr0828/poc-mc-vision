@@ -3,9 +3,9 @@
 # cp terraform.tfvars.example terraform.tfvars
 # その後、以下の値を実際の値に置き換えてください
 
-# Azure OpenAI設定
+# Azure OpenAI設定（ポータルの「Keys and Endpoint」に表示されるURL/キーを使用）
 azure_openai_api_key    = "your-azure-openai-api-key-here"
-azure_openai_endpoint   = "https://eastus2.api.cognitive.microsoft.com"
+azure_openai_endpoint   = "https://aoai-poc-vision-eastus2.openai.azure.com"
 azure_openai_deployment = "gpt4omini-poc"
 azure_openai_api_version = "2024-10-21"
 

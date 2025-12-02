@@ -221,7 +221,7 @@ variable "fastapi_function_url_auth_type" {
 variable "azure_openai_endpoint" {
   description = "Azure OpenAI endpoint base URL"
   type        = string
-  default     = "https://eastus2.api.cognitive.microsoft.com"
+  default     = "https://aoai-poc-vision-eastus2.openai.azure.com"
 }
 
 variable "azure_openai_api_key" {
