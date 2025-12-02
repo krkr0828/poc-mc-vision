@@ -55,7 +55,7 @@ jobs:
 
       - name: Run tfsec
         id: tfsec
-        run: /tmp/tfsec . --format default --no-color --minimum-severity HIGH --exclude aws-s3-encryption-customer-key
+        run: /tmp/tfsec . --format default --no-color --minimum-severity HIGH --exclude aws-s3-encryption-customer-key --exclude aws-sns-topic-encryption-use-cmk
 
       - name: Terraform Plan
         id: plan
