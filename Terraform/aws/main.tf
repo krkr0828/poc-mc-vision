@@ -36,6 +36,7 @@ module "iam" {
   bedrock_model_id          = var.bedrock_model_id
   dynamodb_table_name       = var.dynamodb_table_name
   sagemaker_endpoint_name   = var.sagemaker_endpoint_name
+  ecr_repository_arn        = module.ecr.repository_arn
 }
 
 module "s3" {

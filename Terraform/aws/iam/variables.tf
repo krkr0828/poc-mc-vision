@@ -42,3 +42,8 @@ variable "sagemaker_endpoint_name" {
   description = "SageMaker endpoint name for pipeline worker access"
   type        = string
 }
+
+variable "ecr_repository_arn" {
+  description = "ECR repository ARN for SageMaker access"
+  type        = string
+}
