@@ -274,7 +274,10 @@ resource "aws_iam_role_policy" "sagemaker_ecr" {
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchGetImage"
         ]
-        Resource = var.ecr_repository_arn
+        Resource = [
+          var.ecr_repository_arn,
+          "arn:aws:ecr:*:763104351884:repository/*"
+        ]
       }
     ]
   })
