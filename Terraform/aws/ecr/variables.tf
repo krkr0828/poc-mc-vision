@@ -10,7 +10,7 @@ variable "scan_on_push" {
 }
 
 variable "image_tag_mutability" {
-  description = "Tag mutability setting (IMMUTABLE prevents accidental overwrites)"
+  description = "Tag mutability setting (MUTABLE allows tag overwrites for CI/CD)"
   type        = string
-  default     = "IMMUTABLE"
+  default     = "MUTABLE"
 }
