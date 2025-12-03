@@ -237,7 +237,7 @@ aws logs tail /aws/lambda/poc-mc-vision-fastapi --follow --region ap-northeast-1
 # AWSコンソール: CloudWatch → Dashboards → poc-mc-vision-operations
 ```
 
-**運用監視**: CloudWatch ダッシュボード（`poc-mc-vision-operations`）で、Step Functions、SageMaker、Lambda、DynamoDBの状態を一画面で確認できます。詳細は [aws-console-setup-guide.md](../aws-console-setup-guide.md#35-cloudwatch-ダッシュボードの作成運用監視画面) を参照。
+**運用監視**: CloudWatch ダッシュボード（`poc-mc-vision-operations`）で、Step Functions、SageMaker、Lambda、DynamoDBの状態を一画面で確認できます。Terraform の定義は `Terraform/aws/cloudwatch/` に集約されているため、実装の全体像はそちらを参照してください。
 
 ---
 

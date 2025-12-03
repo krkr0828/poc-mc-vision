@@ -16,6 +16,7 @@ poc-mc-vision/
 ├── Terraform/                  # インフラ定義（IaC）
 ├── .gitattributes              # Git属性設定
 ├── .gitignore                  # Git除外設定
+├── .terraform-version          # Terraformバージョン指定
 └── README.md                   # プロジェクト概要
 ```
 
@@ -57,6 +58,7 @@ GitHub ActionsによるCI/CDパイプライン設定
 - `DIRECTORY_STRUCTURE.md`: 本ドキュメント（ディレクトリ構造説明）
 - `構成図スクリーンショット.png`: アーキテクチャ図
 - `poc-mc-vision-architecture.drawio`: Draw.io形式のアーキテクチャ図
+- `証跡/`: 画面キャプチャや検証証跡（スクリーンショット）を格納
 
 **ドキュメントの役割分担:**
 1. **GETTING_STARTED.md** → 初めてセットアップする人向け
@@ -113,7 +115,7 @@ src/
 ```
 Terraform/
 ├── aws/                        # AWSリソース定義
-│   ├── cloudwatch/             # CloudWatch Alarms
+│   ├── cloudwatch/             # CloudWatch Alarms / Dashboard
 │   ├── dynamodb/               # DynamoDB（推論結果保存）
 │   ├── ecr/                    # ECR（コンテナリポジトリ）
 │   ├── iam/                    # IAMロール・ポリシー
@@ -138,6 +140,27 @@ Terraform/
 - **SETUP_GUIDE.md**: Terraformのデプロイ手順、前提条件、ローカル開発環境セットアップ、検証環境情報
 - **DEPLOYMENT_CHECKLIST.md**: デプロイ前後の確認項目チェックリスト
 - **TERRAFORM_CICD_SETUP_GUIDE.md**: GitHub ActionsによるCI/CDパイプラインの初期設定ガイド（Personal Access Token作成、GitHub Secrets設定、Environment構成、検証手順、トラブルシューティング）
+
+---
+
+## ルートレベルの設定ファイル
+
+### `.terraform-version`
+Terraformのバージョンを指定するファイル
+
+**用途:**
+- tfenvやasdfなどのバージョン管理ツールが、このファイルを読み取り自動的に指定バージョンのTerraformを使用します
+- プロジェクトで使用すべきTerraformバージョンを明示的に管理し、開発環境間での一貫性を保証します
+- CI/CD環境とローカル環境でのバージョン統一を実現します
+
+**設定値:** `1.9.8`
+
+### `.gitattributes` / `.gitignore`
+Git設定ファイル
+
+**用途:**
+- `.gitattributes`: Git属性設定（改行コード、ファイルタイプ指定など）
+- `.gitignore`: バージョン管理から除外するファイル・ディレクトリの指定
 
 ---
 

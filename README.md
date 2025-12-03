@@ -4,15 +4,16 @@
 
 本PoCは、画像を各種 AI サービス（AWS SageMaker・Bedrock・Azure OpenAI）で推論し、その結果を集約・保存するシステムを題材に、AWS を中心とした AI 推論基盤の構築・運用に必要な要素を実装・検証したものです。
 
-Terraform と GitHub Actions による再現可能なインフラ管理、Step Functions による推論ワークフロー自動化、CloudWatch Alarms による監視、Bedrock Guardrails による出力制御・セキュリティ対策まで一通り実装し、本番運用を想定した構成としました。
+Terraform と GitHub Actions による再現可能なインフラ管理、Step Functions による推論ワークフロー自動化、CloudWatch Alarms による監視、Bedrock Guardrails による出力制御・セキュリティ対策まで一通り実装し、本番運用を想定した構成としています。
+また、CloudWatch ダッシュボードで主要コンポーネントのメトリクスを可視化し、運用監視を一元化しています。
 
 | 観点 | 実装内容 |
 | :--- | :--- |
-| **IaCによる再現性** | AWS／Azureの全リソースをTerraformでコード化し、約10分で再構築が可能。 |
+| **IaCによる再現性** | AWS／Azureの主要リソースをTerraformでコード化し、約10分で再構築が可能。 |
 | **ワークフロー自動化** | Step Functions で SageMaker→並列(Bedrock+Azure)→DynamoDB→SNS の推論パイプラインを実装。 |
 | **マルチクラウド連携** | 単一のAPIエンドポイントからAzure OpenAIも呼び出せるようにし、マルチクラウド構成もあわせて実装。  |
-| **CI/CDパイプライン** | GitHub Actionsで Terraform自動検証・手動承認付きデプロイ、Docker自動デプロイを実装。Concurrency制御でインフラ→アプリの順序を保証。 |
-| **監視・アラート** | CloudWatch AlarmsとSNS Email通知により、主要サービスの障害や遅延を検知できるように設定。 |
+| **CI/CDパイプライン** | GitHub Actions で Terraform の自動検証・手動承認付きデプロイと、バックエンドコンテナの自動デプロイを実装。Concurrency制御でインフラ→アプリの順序を保証。 |
+| **監視・アラート** | CloudWatch Alarms と SNS Email 通知で異常を検知し、CloudWatch ダッシュボードで運用監視を一元化。 |
 | **AIの安全性確保** | Bedrock GuardrailsでPII（個人識別情報）検知・有害コンテンツフィルタリングを実装。 |
 | **セキュリティ基盤** | S3暗号化・バージョニング・構造化ログ・tfsecスキャンなど、基本的なセキュリティ設定を実装。 |
 
@@ -20,7 +21,7 @@ Terraform と GitHub Actions による再現可能なインフラ管理、Step F
 
 ## 🎯 PoCの背景と目的
 
-2026年以降に想定している「AWS上のAI推論基盤／MLOps案件」を意識して、モデル開発ではなく、インフラ構成・ワークフロー・監視・セキュリティといった基盤周りを一通り手を動かして整理したPoCです。
+「AWS上のAI推論基盤／MLOps案件」参画を意識して、モデル開発ではなく、インフラ構成・ワークフロー・監視・セキュリティといった基盤周りを一通り実装・検証した PoC です。
 
 ---
 
@@ -78,9 +79,17 @@ CloudWatch Alarms + SNS Email通知
 │   │   └── レイテンシ監視,エラー検知
 │   └── S3 Ingest Lambda
 │       └── レイテンシ監視,エラー検知
-└── Step Functions監視
-    └── 実行失敗/スロットリング/タイムアウト検知
+├── Step Functions監視
+│   └── 実行失敗/スロットリング/タイムアウト検知
+└── SageMaker監視
+    └── エンドポイント呼び出しエラー検知
 ```
+
+---
+
+### 📸 動作証跡
+
+実装時の動作確認やデプロイ結果のスクリーンショット等の証跡は、[docs/証跡](./docs/証跡) ディレクトリに格納しています。
 
 ---
 
@@ -99,13 +108,14 @@ CloudWatch Alarms + SNS Email通知
 - **AI / ML**:
     - **SageMaker Serverless**: カスタムPyTorchモデル（ResNet18）のホスティング。
         - 画像分類タスクとして十分な精度がありつつ比較的軽量なモデルのため、Serverless Inference のメモリや起動時間と相性が良いと判断して採用。
-        - 本PoCでは、S3へのアップロードをきっかけに不定期に推論を行う構成のため、常時起動のエンドポイントではなく Serverless を選択し、待機コストを抑える構成としている。
+        - 本PoCでは、S3へのアップロードをきっかけに不定期に推論を行う構成のため、常時起動のエンドポイントではなく Serverless を選択し、待機コストを抑えるようにしています。
     - **Bedrock**: Claude 3 Haikuモデルを利用（Guardrails適用）。
 - **データストア**:
     - **S3**: 画像アップロード先（暗号化, バージョニング, ライフサイクル設定）。
     - **DynamoDB**: 推論結果の保存（オンデマンド, TTL設定）。
 - **監視 & 通知**:
-    - **CloudWatch Alarms**: 10個のアラームで主要コンポーネントを監視。
+    - **CloudWatch Alarms**: 11個のアラームで主要コンポーネントを監視（Lambda、Step Functions、SageMaker）。
+    - **CloudWatch Dashboard**: 9個のウィジェットで主要コンポーネントを可視化（Step Functions、SageMaker、Lambda、DynamoDB）。
     - **SNS**: アラーム発報時やパイプライン完了時にEメールで通知。
 - **その他**: **ECR** (コンテナリポジトリ), **IAM** (権限管理)
 
@@ -129,18 +139,18 @@ CloudWatch Alarms + SNS Email通知
 ### **1. Bedrock GuardrailsのIAM権限不足**
 - **課題**: Step Functions経由でBedrock Guardrailsを適用した際、`AccessDeniedException` が発生。
 - **原因と解決**: Pipeline Worker LambdaのIAMロールに `bedrock:ApplyGuardrail` 権限が不足していました。これは2024年後半の新機能となり既存の管理ポリシーに含まれていなかったためで、TerraformのIAM定義に権限を明示的に追加し、解決しました。
-- **※設計方針**: Guardrails の設定はアプリケーションコードではなく Terraform 側で管理し、モデルを切り替えても同じ出力制御ポリシー（PII検知・有害コンテンツフィルタリング）を適用できるようにしています。
+- **※設計方針**: Guardrails の設定はアプリケーションコードではなくインフラ構築時に事前設定し、モデルを切り替えても同じ出力制御ポリシー（PII検知・有害コンテンツフィルタリング）を適用できるようにしています。
 
 ### **2. Azure OpenAIのレート制限（HTTP 429）**
 - **課題**: 連続テスト実行時にAzure OpenAI APIが `429 Too Many Requests` を返し、Lambdaがタイムアウト。
 - **原因と解決**: Azure Portal からクオータを増加させることで、継続的なエラーは解消しました。あわせて、Step Functionsのタスクにリトライ設定(Bedrock含む)を追加し、一定回数まではワークフロー内で自動的にリトライするようにしています。
 
 ### **3. CI/CD実装時のtfsecセキュリティチェック調整**
-- **課題**: CI/CDパイプラインに`tfsec`を導入した際、影響度が低いチェック項目まで含めていたため、軽微な指摘が頻発してPRのワークフローが阻害されました。
-- **原因と解決**: 初期設定では全ての重要度レベル（LOW/MEDIUM/HIGH）をチェック対象としていたため、影響度の低い警告が多発しました。`tfsec`の設定を調整し、HIGH重要度のみをチェック対象とすることで、セキュリティ上重要な問題に絞り込むことで解決しました。
+- **課題**: tfsec 導入初期、全ての指摘事項でパイプラインを停止させる設定としていたため、軽微な指摘で開発サイクルが必要以上に停滞。
+- **原因と解決**: セキュリティリスクと開発スピードのバランスを考慮し、「パイプラインを強制停止するのはCRITICALレベル（暗号化の欠落、IAM権限の過剰付与等）のみ」とし、重大なリスクとなる問題に絞り込むこととしました。
 
 ### **その他の技術課題**
-上記の他に、SageMaker Serverlessのカスタムモデル設定、S3のCORS設定、Azure Resource Provider登録等の実装中に発生した技術課題にも適宜対処しています。
+上記の他に、SageMaker Serverlessのカスタムモデル設定、CloudWatch ダッシュボードのメトリクス定義や ECR のタグ運用、Lambda 用コンテナイメージのマニフェスト形式等の実装中に発生した技術課題にも適宜対処しています。
 
 ---
 
@@ -164,6 +174,7 @@ CloudWatch Alarms + SNS Email通知
 ### 監視・アラート設計
 - Lambda・Step Functions・SageMaker のエラーや遅延を検知できるよう、CloudWatch Alarms と SNS Email 通知を設定しています。
 - P95 レイテンシやエラー数といった指標を中心に監視し、外れ値に影響されずに全体の傾向を把握できるようにしています。
+- CloudWatch ダッシュボードでは、Step Functions・SageMaker・Lambda・DynamoDB の主要メトリクスを時系列グラフと数値で可視化し、システム全体の状態を一画面で把握できるようにしています。
 
 ---
 
